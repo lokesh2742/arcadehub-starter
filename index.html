@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10111b" />
+  <title>ArcadeHub — Play Together</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" id="homeLink"><span class="brand-mark">A</span><span>arcade<span class="brand-accent">hub</span></span></a>
+    <nav><a class="nav-link active" href="#discover">Discover</a><a class="nav-link" href="#library">All games</a></nav>
+    <span class="ready-label"><i></i> Ready to play</span>
+  </header>
+
+  <main>
+    <section class="hero" id="discover">
+      <div class="hero-copy">
+        <p class="eyebrow">YOUR NEXT PLAYGROUND</p>
+        <h1>One place.<br><span>Endless plays.</span></h1>
+        <p class="hero-description">Play quick games, challenge the computer, or invite a friend from anywhere. Your next favourite game is one click away.</p>
+        <a class="primary-button" href="#library">Explore games <span>↘</span></a>
+      </div>
+      <div class="hero-art" aria-hidden="true"><div class="orbit"></div><div class="float-x">×</div><div class="float-o">○</div><div class="controller">🎮</div><span class="spark">✦</span></div>
+    </section>
+
+    <section class="library-section" id="library">
+      <div class="section-heading">
+        <div><p class="eyebrow">THE ARCADE</p><h2>Find your game<span class="accent">.</span></h2></div>
+        <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search games..." /></label>
+      </div>
+      <div class="toolbar">
+        <div class="filter-list">
+          <button class="filter-chip active" data-filter="all">All games</button>
+          <button class="filter-chip" data-filter="single">Single player</button>
+          <button class="filter-chip" data-filter="multi">Multiplayer</button>
+        </div>
+        <span class="results-label" id="resultsLabel">Showing 6 games</span>
+      </div>
+      <div class="game-grid" id="gameGrid">
+        <button class="game-card" data-name="tic tac toe" data-type="single multi" data-game="tictactoe">
+          <div class="game-art tic-art"><span class="symbol-x">×</span><span class="symbol-o">○</span><span class="art-tag">FEATURED</span></div>
+          <div class="game-info"><div><h3>Tic Tac Toe</h3><p>Quick strategy · 1–2 players</p></div><span class="play-arrow">↗</span></div>
+          <div class="game-meta"><span>VS AI</span><span>VS PLAYER</span><span>ONLINE</span></div>
+        </button>
+        <button class="game-card" data-name="memory match" data-type="single" data-game="coming"><div class="game-art memory-art"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><div class="game-info"><div><h3>Memory Match</h3><p>Train your brain · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SINGLE PLAYER</span></div></button>
+        <button class="game-card" data-name="neon racer" data-type="single" data-game="coming"><div class="game-art racer-art"><span>🏎️</span><b>NEON RACER</b></div><div class="game-info"><div><h3>Neon Racer</h3><p>Speed challenge · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SINGLE PLAYER</span></div></button>
+        <button class="game-card" data-name="connect four" data-type="multi" data-game="coming"><div class="game-art connect-art"><span>🔴 🟡 🔴<br>🟡 🔴 🟡</span></div><div class="game-info"><div><h3>Connect Four</h3><p>Think ahead · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>MULTIPLAYER</span></div></button>
+        <button class="game-card" data-name="word sprint" data-type="single multi" data-game="coming"><div class="game-art word-art"><b>WORD<br>SPRINT</b></div><div class="game-info"><div><h3>Word Sprint</h3><p>Beat the clock · 1–2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SOLO</span><span>DUEL</span></div></button>
+        <button class="game-card" data-name="pixel pong" data-type="multi" data-game="coming"><div class="game-art pong-art"><span>▏　●　▕</span><b>PIXEL PONG</b></div><div class="game-info"><div><h3>Pixel Pong</h3><p>Classic arcade · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>MULTIPLAYER</span></div></button>
+      </div>
+      <p class="empty-state" id="emptyState" hidden>No games match your search.</p>
+    </section>
+    <section class="bottom-banner"><div><p class="eyebrow">GOOD GAMES ARE BETTER TOGETHER</p><h2>Bring a friend. Start a rivalry.</h2></div><span>✦</span></section>
+  </main>
+  <footer><a class="brand footer-brand" href="#"><span class="brand-mark">A</span><span>arcade<span class="brand-accent">hub</span></span></a><span>Made for play. More games coming soon.</span></footer>
+
+  <section class="game-screen" id="ticTacToeScreen" aria-hidden="true">
+    <div class="game-screen-top">
+      <button class="back-button" id="backButton">← <span>Back to games</span></button>
+      <div class="mini-brand"><span class="brand-mark">A</span> arcade<span class="brand-accent">hub</span></div>
+      <span class="screen-label">TIC TAC TOE</span>
+    </div>
+
+    <div class="game-content" id="nameScreen">
+      <p class="eyebrow">LET'S GET YOU IN THE GAME</p>
+      <h1>What's your name<span class="accent">?</span></h1>
+      <p class="muted">This name will be shown to the other player.</p>
+      <form id="nameForm" class="name-form">
+        <label for="playerName">PLAYER NAME</label>
+        <input id="playerName" maxlength="16" required placeholder="Enter your name" autocomplete="nickname" />
+        <button class="primary-button full-button" type="submit">Continue <span>→</span></button>
+      </form>
+    </div>
+
+    <div class="game-content" id="modeSelection" hidden>
+      <p class="eyebrow">HEY, <span id="welcomeName">PLAYER</span>!</p>
+      <h1>Choose your mode<span class="accent">.</span></h1>
+      <p class="muted">How would you like to play Tic Tac Toe?</p>
+      <div class="mode-cards">
+        <button class="mode-card" id="vsAiButton"><span class="mode-icon">🤖</span><b>VS AI</b><small>Challenge the computer</small><span class="card-arrow">↗</span></button>
+        <button class="mode-card" id="vsPlayerButton"><span class="mode-icon">👥</span><b>VS PLAYER</b><small>Two players, same device</small><span class="card-arrow">↗</span></button>
+        <button class="mode-card online-mode" id="onlineButton"><span class="mode-icon">🌐</span><b>ONLINE ROOM</b><small>Play with a friend over internet</small><span class="card-arrow">↗</span></button>
+      </div>
+      <button class="text-button" id="editNameButton">Change player name</button>
+    </div>
+
+    <div class="game-content room-content" id="onlineSetup" hidden>
+      <p class="eyebrow">PLAY FROM ANYWHERE</p><h1>Online room<span class="accent">.</span></h1>
+      <p class="muted">Create a room and share its code, or enter a friend's code to join.</p>
+      <div class="room-panels">
+        <div class="room-panel"><span class="panel-icon">✦</span><h3>Create a room</h3><p>You'll be Player X. Your friend joins as O.</p><button class="primary-button full-button" id="createRoomButton">Create room</button></div>
+        <div class="room-panel"><span class="panel-icon">↗</span><h3>Join a room</h3><p>Enter the six-character code from your friend.</p><form id="joinRoomForm"><input id="roomCodeInput" maxlength="6" placeholder="ROOM CODE" autocomplete="off" required/><button class="secondary-button full-button" type="submit">Join room</button></form></div>
+      </div>
+      <button class="text-button" id="onlineBackButton">← Back to modes</button>
+      <p class="setup-note">Online play requires an internet connection and the Firebase setup described below.</p>
+    </div>
+
+    <div class="game-content waiting-content" id="waitingRoom" hidden>
+      <p class="eyebrow">ROOM CREATED</p><h1>Invite your friend<span class="accent">.</span></h1>
+      <p class="muted">Share this code. Your friend can join from any phone or computer.</p>
+      <div class="room-code-box"><span id="roomCodeDisplay">------</span><button id="copyRoomCodeButton" class="copy-button">Copy</button></div>
+      <div class="waiting-indicator"><i></i> Waiting for Player 2 to join…</div>
+      <p class="muted small">Keep this page open while your friend joins.</p>
+      <button class="text-button" id="cancelRoomButton">Cancel room</button>
+    </div>
+
+    <div class="game-content board-content" id="boardArea" hidden>
+      <p class="eyebrow" id="modeEyebrow">PLAYER VS AI</p>
+      <h1>Tic Tac Toe<span class="accent">.</span></h1>
+      <div class="room-banner" id="activeRoomBanner" hidden><span>ROOM</span><strong id="activeRoomCode"></strong><button id="copyActiveCodeButton">Copy code</button></div>
+      <div class="score-row">
+        <div class="score-card active-turn" id="xScoreCard"><span class="score-symbol">×</span><span class="score-name" id="xName">YOU</span><strong id="xScore">0</strong></div>
+        <div class="turn-status" id="turnStatus" aria-live="polite">Your turn</div>
+        <div class="score-card" id="oScoreCard"><span class="score-symbol o-score">○</span><span class="score-name" id="oName">AI</span><strong id="oScore">0</strong></div>
+      </div>
+      <div class="tic-board" id="ticBoard" role="grid" aria-label="Tic Tac Toe board">
+        <button class="cell" data-cell="0" aria-label="Empty cell 1"></button><button class="cell" data-cell="1" aria-label="Empty cell 2"></button><button class="cell" data-cell="2" aria-label="Empty cell 3"></button>
+        <button class="cell" data-cell="3" aria-label="Empty cell 4"></button><button class="cell" data-cell="4" aria-label="Empty cell 5"></button><button class="cell" data-cell="5" aria-label="Empty cell 6"></button>
+        <button class="cell" data-cell="6" aria-label="Empty cell 7"></button><button class="cell" data-cell="7" aria-label="Empty cell 8"></button><button class="cell" data-cell="8" aria-label="Empty cell 9"></button>
+      </div>
+      <div class="board-actions"><button class="secondary-button" id="changeModeButton">Change mode</button><button class="primary-button" id="newRoundButton">New round ↻</button></div>
+      <p class="game-hint" id="gameHint">Get three in a row to win.</p>
+      <p class="connection-status" id="connectionStatus"></p>
+    </div>
+  </section>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

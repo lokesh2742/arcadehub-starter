@@ -7,7 +7,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDAFaAbhWhVwkxkU7KH8n-IsGICFzYU14",
+  apiKey: "AIzaSyDAFaBhBwHvWkxkU7KH8n-IsGICwFzYUl4",
   authDomain: "arcadehub-3f060.firebaseapp.com",
   databaseURL: "https://arcadehub-3f060-default-rtdb.firebaseio.com",
   projectId: "arcadehub-3f060",

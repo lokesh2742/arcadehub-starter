@@ -9,11 +9,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_FIREBASE_API_KEY",
-  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "PASTE_YOUR_PROJECT",
-  appId: "PASTE_YOUR_FIREBASE_APP_ID"
+  apiKey: "AIzaSyDAFaAbhWhVwkxkU7KH8n-IsGICFzYU14",
+  authDomain: "arcadehub-3f060.firebaseapp.com",
+  databaseURL: "https://arcadehub-3f060-default-rtdb.firebaseio.com",
+  projectId: "arcadehub-3f060",
+  storageBucket: "arcadehub-3f060.firebasestorage.app",
+  messagingSenderId: "777660361833",
+  appId: "1:777660361833:web:623f0ce7d78a4733ac46f8",
+  measurementId: "G-Q1GX1EEMWX"
 };
 
 const firebaseConfigured = !Object.values(firebaseConfig).some(value => value.includes("PASTE_YOUR"));

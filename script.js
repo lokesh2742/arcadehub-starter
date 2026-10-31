@@ -503,6 +503,7 @@ async function createRoom() {
   }
 }
 
+
 async function joinRoom(code) {
   if (!ensureOnlineReady()) return;
 
@@ -516,14 +517,30 @@ async function joinRoom(code) {
   try {
     const candidate = ref(db, `rooms/${code}`);
 
+    // First check whether the room exists.
+    const roomSnapshot = await get(candidate);
+
+    if (!roomSnapshot.exists()) {
+      throw new Error("Room does not exist. Check the code.");
+    }
+
+    const existingRoom = roomSnapshot.val();
+
+    if (existingRoom.status !== "waiting" || existingRoom.players?.O) {
+      throw new Error("Room is already full or no longer waiting.");
+    }
+
+    // Now join the room.
     const result = await runTransaction(candidate, room => {
-      if (!room || room.status !== "waiting" || room.players?.O) {
+      if (!room) return;
+
+      if (room.status !== "waiting" || room.players?.O) {
         return;
       }
 
       room.players.O = {
-        id:userId,
-        name:playerName
+        id: userId,
+        name: playerName
       };
 
       room.status = "playing";
@@ -532,7 +549,7 @@ async function joinRoom(code) {
     });
 
     if (!result.committed) {
-      throw new Error("Room not found, already full, or no longer waiting.");
+      throw new Error("Someone else joined this room first. Try another room.");
     }
 
     roomRef = candidate;
@@ -547,12 +564,13 @@ async function joinRoom(code) {
       .set(false);
 
   } catch (error) {
-    console.error(error);
+    console.error("Join room error:", error);
     showToast(error.message || "Couldn't join room.");
   } finally {
     $("roomCodeInput").disabled = false;
   }
 }
+
 
 function enterOnlineBoard(data) {
   currentRoom = data;

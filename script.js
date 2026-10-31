@@ -505,6 +505,7 @@ async function createRoom() {
 
 
 
+
 async function joinRoom(code) {
   if (!ensureOnlineReady()) return;
 
@@ -518,22 +519,29 @@ async function joinRoom(code) {
   try {
     const candidate = ref(db, `rooms/${code}`);
 
-    // First check whether the room exists.
+    // Fetch the existing room.
     const roomSnapshot = await get(candidate);
 
     if (!roomSnapshot.exists()) {
       throw new Error("Room does not exist. Check the code.");
     }
 
+    // Keep an untouched copy for the transaction.
     const existingRoom = roomSnapshot.val();
 
-    if (existingRoom.status !== "waiting" || existingRoom.players?.O) {
+    if (
+      existingRoom.status !== "waiting" ||
+      existingRoom.players?.O
+    ) {
       throw new Error("Room is already full or no longer waiting.");
     }
 
-    // Join the room using the latest available room data.
+    // Join using a fresh object on every transaction attempt.
     const result = await runTransaction(candidate, room => {
-      const currentRoom = room || existingRoom;
+
+      const currentRoom = JSON.parse(
+        JSON.stringify(room ?? existingRoom)
+      );
 
       if (
         currentRoom.status !== "waiting" ||
@@ -541,6 +549,8 @@ async function joinRoom(code) {
       ) {
         return;
       }
+
+      currentRoom.players = currentRoom.players || {};
 
       currentRoom.players.O = {
         id: userId,
@@ -554,7 +564,7 @@ async function joinRoom(code) {
 
     if (!result.committed) {
       throw new Error(
-        "Someone else joined this room first. Try another room."
+        "Join transaction was rejected. Check the room status."
       );
     }
 
@@ -576,6 +586,7 @@ async function joinRoom(code) {
     $("roomCodeInput").disabled = false;
   }
 }
+
 
 
 function enterOnlineBoard(data) {

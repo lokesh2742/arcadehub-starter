@@ -504,6 +504,7 @@ async function createRoom() {
 }
 
 
+
 async function joinRoom(code) {
   if (!ensureOnlineReady()) return;
 
@@ -530,26 +531,31 @@ async function joinRoom(code) {
       throw new Error("Room is already full or no longer waiting.");
     }
 
-    // Now join the room.
+    // Join the room using the latest available room data.
     const result = await runTransaction(candidate, room => {
-      if (!room) return;
+      const currentRoom = room || existingRoom;
 
-      if (room.status !== "waiting" || room.players?.O) {
+      if (
+        currentRoom.status !== "waiting" ||
+        currentRoom.players?.O
+      ) {
         return;
       }
 
-      room.players.O = {
+      currentRoom.players.O = {
         id: userId,
         name: playerName
       };
 
-      room.status = "playing";
+      currentRoom.status = "playing";
 
-      return room;
+      return currentRoom;
     });
 
     if (!result.committed) {
-      throw new Error("Someone else joined this room first. Try another room.");
+      throw new Error(
+        "Someone else joined this room first. Try another room."
+      );
     }
 
     roomRef = candidate;

@@ -44,7 +44,7 @@ function memorySolo(){
 }
 
 function memoryRoomSetup(){
- $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">PRIVATE MULTIPLAYER</p><h2>Play with a friend.</h2><p class="game-help">Create a room and share its six-character code, or join a friend's room.</p><button class="primary-button full-button" id="memoryCreateRoom">Create custom room</button><div class="room-code-entry"><input id="memoryJoinCode" maxlength="6" placeholder="ENTER ROOM CODE" autocomplete="off"/><button class="secondary-button" id="memoryJoinRoom">Join room</button></div><p class="game-help" id="memoryRoomStatus"></p></div>';
+ $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">PRIVATE MULTIPLAYER</p><h2>Play with a friend.</h2><p class="game-help">Create a room and share its six-character code, or join a room created by a friend.</p><button class="primary-button full-button" id="memoryCreateRoom">Create custom room</button><div class="room-code-entry"><input id="memoryJoinCode" maxlength="6" placeholder="ENTER ROOM CODE" autocomplete="off"/><button class="secondary-button" id="memoryJoinRoom">Join room</button></div><p class="game-help" id="memoryRoomStatus"></p></div>';
  $("memoryCreateRoom").onclick=createMemoryRoom;
  $("memoryJoinRoom").onclick=()=>joinMemoryRoom($("memoryJoinCode").value.trim().toUpperCase());
 }

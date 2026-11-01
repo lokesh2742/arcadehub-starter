@@ -47,7 +47,7 @@ function joinRoom(room, ws, name) {
   if (room.players.size >= room.limit) return null;
   const id = randomUUID();
   const [x, y, z] = spawn(room.players.size);
-  const player = { id, name: safeName(name), ws, x, y, z, yaw: 0, pitch: 0, health: 100, score: 0, deaths: 0, weapon: "akm", ammo: { akm: 30, m416: 30, awm: 5, ump: 25, dbs: 14, pistol: 15 }, reserve: { akm: 180, m416: 180, awm: 35, ump: 150, dbs: 56, pistol: 90 }, lastShot: 0, lastInput: 0, weaponChangeUntil: 0 };
+  const player = { id, name: safeName(name), ws, x, y, z, yaw: 0, pitch: 0, health: 100, score: 0, deaths: 0, weapon: "akm", ammo: { akm: 30, m416: 30, awm: 5, ump: 25, dbs: 14, pistol: 15 }, reserve: { akm: 180, m416: 180, awm: 35, ump: 150, dbs: 56, pistol: 90 }, lastShot: 0, lastInput: 0, weaponChangeUntil: Date.now() + 15000 };
   room.players.set(id, player);
   if (!room.hostId) room.hostId = id;
   return player;

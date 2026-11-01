@@ -14,7 +14,7 @@ const firebaseConfig = {
   measurementId: "G-Q1GX1EEMWX"
 };
 let miniDb=null, miniAuthReady=false;
-try{const app=getApps().find(a=>a.name==="ArcadeHubMini")||initializeApp(firebaseConfig,"ArcadeHubMini");const auth=getAuth(app);miniDb=getDatabase(app);await signInAnonymously(auth);memoryUserId=auth.currentUser.uid;miniAuthReady=true;}catch(e){console.warn("Online Memory Match unavailable:",e);}
+try{const app=getApps().find(a=>a.name==="ArcadeHubMini")||initializeApp(firebaseConfig,"ArcadeHubMini");const auth=getAuth(app);miniDb=getDatabase(app);signInAnonymously(auth).then(()=>{memoryUserId=auth.currentUser.uid;miniAuthReady=true;}).catch(e=>console.warn("Online Memory Match unavailable:",e));}catch(e){console.warn("Online Memory Match unavailable:",e);}
 const player=()=>{try{return localStorage.getItem("arcadehubPlayerName")||"Player";}catch{return"Player";}};
 function stopRoom(){if(memoryRoomOff){memoryRoomOff();memoryRoomOff=null;}memoryRoomRef=null;memoryRoom=null;memoryMark="";clearTimeout(resolveTimer);}
 function closeGame(){clearInterval(timer);clearTimeout(timer);timer=null;if(cleanup){cleanup();cleanup=null;}stopRoom();$("miniGameScreen").hidden=true;active="";}
@@ -32,7 +32,6 @@ function memoryMenu(){
 function shuffledDeck(){const a=["◆","●","▲","★","♥","☀","☂","✿"];return [...a,...a].sort(()=>Math.random()-.5);}
 function memorySolo(){
  const deck=shuffledDeck(),opened=[],matched=[];let moves=0,lock=false,started=Date.now();
- function hasPlacement(shape){for(let r=0;r<10;r++)for(let c=0;c<10;c++)if(canPlace(shape,r,c))return true;return false;}
  function draw(){
   $("miniGameBody").innerHTML='<div class="memory-hud"><span>Moves <b>'+moves+'</b></span><span>Pairs <b>'+matched.length/2+'/8</b></span><span>Time <b>'+Math.floor((Date.now()-started)/1000)+'s</b></span></div><div class="mini-board memory-board">'+deck.map((v,i)=>'<button class="memory-card '+(opened.includes(i)||matched.includes(i)?'revealed ':'')+(matched.includes(i)?'matched':'')+'" data-i="'+i+'" aria-label="Memory card">'+(opened.includes(i)||matched.includes(i)?v:"?")+'</button>').join("")+'</div><p class="game-help">Find all eight pairs in as few moves as possible.</p>';
   $("miniGameBody").querySelectorAll(".memory-card").forEach(b=>b.onclick=()=>{
@@ -133,6 +132,7 @@ function blocks(){
  const newPieces=()=>pieces=Array.from({length:3},()=>shapes[Math.floor(Math.random()*shapes.length)]);
  newPieces();
  function canPlace(shape,row,col){return shape.every(([x,y])=>row+y<10&&col+x<10&&!grid[(row+y)*10+col+x]);}
+ function hasPlacement(shape){for(let r=0;r<10;r++)for(let c=0;c<10;c++)if(canPlace(shape,r,c))return true;return false;}
  function draw(){
   $("miniGameBody").innerHTML='<div class="mini-score">LINES CLEARED <b>'+score+'</b></div><div class="mini-board block-grid">'+grid.map((v,i)=>'<button class="block-cell '+(v?'filled':'')+'" data-i="'+i+'" aria-label="Board cell"></button>').join("")+'</div><p class="game-help">Choose a shape, then tap the board to place it. Complete a full row or column to clear it.</p><div class="block-tray">'+pieces.map((shape,i)=>'<button class="block-piece '+(selected===i?'selected':'')+'" data-piece="'+i+'" '+(shape.length===0?'disabled':'')+'>'+Array.from({length:3},(_,y)=>'<span class="piece-row">'+Array.from({length:3},(_,x)=>'<i class="'+(shape.some(([sx,sy])=>sx===x&&sy===y)?'piece-dot':'')+'"></i>').join("")+'</span>').join("")+'</button>').join("")+'</div>';
   $("miniGameBody").querySelectorAll(".block-piece").forEach(btn=>btn.onclick=()=>{selected=+btn.dataset.piece;draw();});

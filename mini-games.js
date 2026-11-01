@@ -75,12 +75,16 @@ async function joinMemoryRoom(code){
   if(existing.type!=="memory"||existing.status!=="waiting"||existing.players?.O)throw Error("This room is full or is for another game.");
   stage="joining room (Realtime Database transaction)";
   const joined=await runTransaction(candidate,room=>{
-   if(!room||room.type!=="memory"||room.status!=="waiting")return;
-   if(room.players?.O){if(room.players.O.id===memoryUserId)return room;return;}
-   room.players=room.players||{};
-   room.players.O={id:memoryUserId,name:player()};
-   room.status="playing";
-   return room;
+   // A transaction update callback can initially receive null when this
+   // client's local RTDB cache has not populated the room yet. We already
+   // fetched the room above; use that snapshot for the first local attempt.
+   // If the server has changed since that read, RTDB retries the transaction
+   // with the latest server value and this callback validates it again.
+   const current=room===null?existing:room;
+   if(!current||current.type!=="memory"||current.status!=="waiting")return;
+   if(current.players?.O){if(current.players.O.id===memoryUserId)return current;return;}
+   const next={...current,players:{...(current.players||{}),O:{id:memoryUserId,name:player()}},status:"playing"};
+   return next;
   });
   if(!joined.committed){
    stage="checking room after an uncommitted transaction";

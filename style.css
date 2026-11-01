@@ -124,3 +124,26 @@ main{max-width:1160px;margin:auto;padding:0 28px}.hero{min-height:350px;display:
 @media(max-width:560px){.ad-slot{width:calc(100% - 30px);margin:18px auto 22px}.ad-slot-placeholder{min-height:100px}}
 
 .profile-dialog .full-button{width:100%;margin:8px 0}#signOutButton[hidden],#googleSignInButton[hidden]{display:none!important}
+
+/* Friends, global player search and inbox */
+.friends-trigger{border:1px solid #a78bfa66;border-radius:999px;background:#a78bfa18;color:#e8ddff;padding:9px 13px;font-size:11px;font-weight:800;cursor:pointer}
+.friends-trigger span{color:#ff78b7;font-size:17px;margin-left:3px}
+.friends-overlay{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;background:#090912ed;backdrop-filter:blur(12px)}
+.friends-overlay[hidden]{display:none!important}
+.friends-dialog{position:relative;width:min(100%,520px);max-height:min(86vh,720px);overflow:auto;padding:28px 24px;border:1px solid #a78bfa55;border-radius:20px;background:linear-gradient(145deg,#28223e,#171925);box-shadow:0 30px 100px #000a}
+.friends-dialog h2{font:700 27px 'Space Grotesk';margin:0 0 14px}
+.friends-id-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px;border-radius:10px;background:#ffffff08;color:var(--muted);font-size:11px}
+.friends-id-line b{color:#e4d9ff;letter-spacing:2px}
+.friends-id-line button{padding:6px 9px;font-size:10px}
+.friends-tabs{display:flex;gap:6px;margin:17px 0 13px;border-bottom:1px solid var(--line)}
+.friends-tab{border:0;border-bottom:2px solid transparent;padding:10px 12px;background:transparent;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}
+.friends-tab.active{color:#e4d9ff;border-color:#a78bfa}
+.friends-search-label{display:block;color:#c9c2dd;font-size:9px;letter-spacing:1.3px;font-weight:800;margin:8px 0}
+.friends-search-row{display:flex;gap:8px}.friends-search-row input{min-width:0;flex:1;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:#10111b;color:#fff;text-transform:uppercase;letter-spacing:2px}
+.friends-list{display:grid;gap:9px;min-height:70px}
+.friend-row{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #ffffff16;border-radius:11px;background:#ffffff08}
+.friend-avatar{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#ff78b7);color:#211a33;font-weight:900}
+.friend-details{min-width:0;flex:1;text-align:left}.friend-details b{display:block;font-size:12px}.friend-details small{color:var(--muted);font-size:9px}
+.friend-row button{padding:8px 10px;font-size:10px;white-space:nowrap}
+.memory-result{margin:18px auto 10px}.memory-result h3{font-size:24px}.memory-final-score{display:flex;justify-content:center;gap:20px;margin:14px 0;color:#ddd4f5;font-size:11px}.memory-final-score b{display:block;font-size:21px}
+@media(max-width:560px){.friends-trigger{padding:8px 9px;font-size:10px}.friends-dialog{padding:25px 15px}.friends-tab{padding:9px 8px;font-size:10px}}

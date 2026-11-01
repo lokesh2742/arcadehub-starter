@@ -12,8 +12,8 @@ const say=s=>{if($("friendsStatus"))$("friendsStatus").textContent=s;};
 const online=uid=>presence[uid]?.state==="online";
 function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];presenceWatchers={};if(presenceOff){presenceOff();presenceOff=null;}}
 function makeUsername(u){
- const base=(u.displayName||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,".").replace(/^\.|\.$/g,"").slice(0,18)||"player";
- return (base+"."+u.uid.slice(-6)).toLowerCase();
+ const base=(u.displayName||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,18)||"player";
+ return (base+"-"+u.uid.slice(-6)).toLowerCase();
 }
 async function ensureProfile(u){
  const profileRef=ref(db,"playerUsernames/"+u.uid),existing=await get(profileRef);
@@ -72,7 +72,7 @@ async function acceptFriend(uid){
 }
 async function searchPlayer(){
  const query=$("friendSearchInput").value.trim().replace(/^@/,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
- if(!/^[a-z0-9.]{3,32}$/.test(query)){say("Enter the player's username (for example, @alex.12ab34).");return;}
+ if(!/^[a-z0-9-]{3,32}$/.test(query)){say("Enter the player's username (for example, @alex-12ab34).");return;}
  try{
   const snap=await get(ref(db,"playerDirectory/"+query));
   if(!snap.exists()){out.innerHTML='<p class="game-help">No player found. Check the username and try again.</p>';return;}

@@ -1,7 +1,7 @@
 // Firebase is used for internet multiplayer rooms.
 // Enable Realtime Database and Anonymous Authentication in Firebase.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getDatabase, ref, get, set, update, onValue, runTransaction, onDisconnect, remove
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
@@ -18,20 +18,11 @@ const firebaseConfig = {
 };
 
 const firebaseConfigured = !Object.values(firebaseConfig).some(value => value.includes("PASTE_YOUR"));
-let db = null, auth = null, userId = null, firebaseReady = false;
-
-if (firebaseConfigured) {
-  try {
-    const app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getDatabase(app);
-    await signInAnonymously(auth);
-    userId = auth.currentUser.uid;
-    firebaseReady = true;
-  } catch (error) {
-    console.error("Firebase setup error:", error);
-  }
-}
+let db=null,auth=null,userId=null,firebaseReady=false,playerName="Guest";
+const googleProvider=new GoogleAuthProvider();
+if(firebaseConfigured){try{const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);firebaseReady=true;onAuthStateChanged(auth,user=>{userId=user?.uid||null;playerName=user?.displayName?.trim().slice(0,16)||"Guest";updateProfileUI();});}catch(error){console.error("Firebase setup error:",error);}}
+async function requireGoogleSignIn(){if(!firebaseReady||!auth)throw Error("Online play is not configured yet.");let user=auth.currentUser;if(!user){try{user=(await signInWithPopup(auth,googleProvider)).user;}catch(error){if(error.code==="auth/popup-closed-by-user")throw Error("Sign-in was cancelled.");if(error.code==="auth/unauthorized-domain")throw Error("This website domain is not authorized in Firebase Authentication.");throw error;}}userId=user.uid;playerName=user.displayName?.trim().slice(0,16)||"Guest";updateProfileUI();return user;}
+window.arcadeHubRequireGoogleSignIn=requireGoogleSignIn;
 
 const $ = id => document.getElementById(id);
 const gameScreen = $("ticTacToeScreen"), nameScreen = $("nameScreen");
@@ -46,7 +37,7 @@ const wins = [
   [0,4,8],[2,4,6]
 ];
 
-let playerName = "", gameMode = "ai", myMark = "X";
+let gameMode = "ai", myMark = "X";
 let board = Array(9).fill("");
 let currentPlayer = "X", gameOver = false;
 let scores = {X:0,O:0};
@@ -55,33 +46,12 @@ let roomUnsubscribe = null, currentRoom = null;
 let toastTimer, aiTimer, isApplyingRemote = false;
 
 
-function setPlayerName(name) {
-  playerName = name.trim().slice(0,16);
-  try { localStorage.setItem("arcadehubPlayerName", playerName); } catch (error) { console.warn("Could not save profile on this device.",error); }
-  $("profileButtonName").textContent = playerName;
-  $("profileAvatar").textContent = playerName.charAt(0).toUpperCase();
-  $("profileLargeAvatar").textContent = playerName.charAt(0).toUpperCase();
-  $("welcomeName").textContent = playerName.toUpperCase();
-  $("playerName").value = playerName;
-}
-try { playerName = localStorage.getItem("arcadehubPlayerName") || ""; } catch {}
-if (playerName) { setPlayerName(playerName); $("welcomeOverlay").hidden = true; }
-else { $("welcomeOverlay").hidden = false; }
-$("welcomeForm").addEventListener("submit", e => {
-  e.preventDefault(); const value = $("welcomeNameInput").value.trim(); if (!value) return;
-  setPlayerName(value); $("welcomeOverlay").hidden = true;
-});
-$("profileButton").addEventListener("click", () => {
-  $("profileNameInput").value = playerName;
-  $("profileOverlay").hidden = false;
-});
-$("closeProfileButton").addEventListener("click", () => $("profileOverlay").hidden = true);
-$("profileOverlay").addEventListener("click", e => { if (e.target === $("profileOverlay")) $("profileOverlay").hidden = true; });
-$("profileForm").addEventListener("submit", e => {
-  e.preventDefault(); const value = $("profileNameInput").value.trim(); if (!value) return;
-  setPlayerName(value); $("profileOverlay").hidden = true; showToast("Your profile name has been updated.");
-});
-
+function updateProfileUI(){const user=auth?.currentUser;playerName=user?.displayName?.trim().slice(0,16)||"Guest";$("profileButtonName").textContent=user?playerName:"Sign in";$("profileAvatar").textContent=user?playerName.charAt(0).toUpperCase():"?";$("profileLargeAvatar").textContent=user?playerName.charAt(0).toUpperCase():"?";$("profileAccountStatus").textContent=user?"Signed in with Google":"Playing as a guest";$("googleSignInButton").hidden=!!user;$("signOutButton").hidden=!user;$("playerName").value=playerName;}
+$("profileButton").addEventListener("click",()=>{updateProfileUI();$("profileOverlay").hidden=false;});
+$("closeProfileButton").addEventListener("click",()=>$("profileOverlay").hidden=true);
+$("profileOverlay").addEventListener("click",e=>{if(e.target===$("profileOverlay"))$("profileOverlay").hidden=true;});
+$("googleSignInButton").addEventListener("click",async()=>{try{await requireGoogleSignIn();$("profileOverlay").hidden=true;showToast("Signed in with Google.");}catch(error){showToast(error.message||"Google sign-in failed.");}});
+$("signOutButton").addEventListener("click",async()=>{try{await signOut(auth);$("profileOverlay").hidden=true;showToast("Signed out. Solo games remain available.");}catch(error){showToast(error.message||"Could not sign out.");}});
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
@@ -98,9 +68,8 @@ function openGame() {
   gameScreen.classList.add("open");
   gameScreen.setAttribute("aria-hidden","false");
   document.body.style.overflow = "hidden";
-  showOnly(playerName ? modeSelection : nameScreen);
+  showOnly(modeSelection);
   $("playerName").value = playerName;
-  if (!playerName) setTimeout(() => $("playerName").focus(), 100);
 }
 
 function closeGame() {
@@ -130,29 +99,13 @@ $("homeLink").addEventListener("click", e => {
   window.scrollTo({top:0,behavior:"smooth"});
 });
 
-$("nameForm").addEventListener("submit", e => {
-  e.preventDefault();
-
-  const name = $("playerName").value.trim();
-  if (!name) return;
-
-  setPlayerName(name);
-  $("welcomeOverlay").hidden = true;
-  showOnly(modeSelection);
-});
-
-$("editNameButton").addEventListener("click", () => { $("playerName").value = playerName; showOnly(nameScreen); });
+$("nameForm").addEventListener("submit",e=>{e.preventDefault();showOnly(modeSelection);});
+$("editNameButton").addEventListener("click",()=>{$("profileOverlay").hidden=false;updateProfileUI();});
 
 $("vsAiButton").addEventListener("click", () => startLocalMode("ai"));
 $("vsPlayerButton").addEventListener("click", () => startLocalMode("local"));
 
-$("onlineButton").addEventListener("click", () => {
-  showOnly(onlineSetup);
-
-  if (!firebaseReady) {
-    showToast("Add your Firebase config to enable online rooms.");
-  }
-});
+$("onlineButton").addEventListener("click",async()=>{try{await requireGoogleSignIn();showOnly(onlineSetup);}catch(error){showToast(error.message||"Sign in to play online.");}});
 
 $("onlineBackButton").addEventListener("click", () => showOnly(modeSelection));
 
@@ -433,13 +386,9 @@ function minimax(state,depth,maximizing) {
 
 // ONLINE MULTIPLAYER — FIREBASE
 
-function ensureOnlineReady() {
-  if (!firebaseReady) {
-    showToast("Online rooms aren't configured yet. Follow the Firebase setup steps.");
-    return false;
-  }
-
-  return true;
+async function ensureOnlineReady() {
+  if (!firebaseReady) { showToast("Online rooms aren't configured yet. Follow the Firebase setup steps."); return false; }
+  try { await requireGoogleSignIn(); return true; } catch(error) { showToast(error.message||"Sign in to play online."); return false; }
 }
 
 function randomRoomCode() {
@@ -454,7 +403,7 @@ function randomRoomCode() {
 }
 
 async function createRoom() {
-  if (!ensureOnlineReady()) return;
+  if (!(await ensureOnlineReady())) return;
 
   $("createRoomButton").disabled = true;
 
@@ -524,7 +473,7 @@ async function createRoom() {
 
 
 async function joinRoom(code) {
-  if (!ensureOnlineReady()) return;
+  if (!(await ensureOnlineReady())) return;
 
   if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) {
     showToast("Enter a valid six-character room code.");

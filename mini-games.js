@@ -1,5 +1,5 @@
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getApps } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getDatabase, ref, get, runTransaction, onValue, update } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 const $ = id => document.getElementById(id);
 let timer=null, cleanup=null, active="", memoryRoomRef=null, memoryRoomOff=null, memoryRoom=null, memoryMark="", memoryUserId=null, resolveTimer=null;
@@ -13,9 +13,9 @@ const firebaseConfig = {
   appId: "1:777660361833:web:623f0ce7d78a4733ac46f8",
   measurementId: "G-Q1GX1EEMWX"
 };
-let miniDb=null, miniAuthReady=false;
-try{const app=getApps().find(a=>a.name==="ArcadeHubMini")||initializeApp(firebaseConfig,"ArcadeHubMini");const auth=getAuth(app);miniDb=getDatabase(app);signInAnonymously(auth).then(()=>{memoryUserId=auth.currentUser.uid;miniAuthReady=true;}).catch(e=>console.warn("Online Memory Match unavailable:",e));}catch(e){console.warn("Online Memory Match unavailable:",e);}
-const player=()=>{try{return localStorage.getItem("arcadehubPlayerName")||"Player";}catch{return"Player";}};
+let miniDb=null,miniAuth=null;try{const app=getApps().find(a=>a.name==="[DEFAULT]");if(app){miniAuth=getAuth(app);miniDb=getDatabase(app);}}catch(e){console.warn("Online Memory Match unavailable:",e);}
+async function ensureMemorySignIn(){if(!window.arcadeHubRequireGoogleSignIn)throw Error("Sign-in is not ready. Please try again.");const user=await window.arcadeHubRequireGoogleSignIn();memoryUserId=user.uid;return user;}
+const player=()=>miniAuth?.currentUser?.displayName?.trim().slice(0,16)||"Player";
 function stopRoom(){if(memoryRoomOff){memoryRoomOff();memoryRoomOff=null;}memoryRoomRef=null;memoryRoom=null;memoryMark="";clearTimeout(resolveTimer);}
 function closeGame(){clearInterval(timer);clearTimeout(timer);timer=null;if(cleanup){cleanup();cleanup=null;}stopRoom();$("miniGameScreen").hidden=true;active="";}
 function openGame(name){closeGame();active=name;$("miniGameScreen").hidden=false;$("miniGameTitle").textContent=({memory:"Memory Match",snake:"Snake","2048":"2048",blocks:"Block Puzzle",racer:"Neon Racer"})[name];if(name==="memory")memoryMenu();if(name==="snake")snake();if(name==="2048")game2048();if(name==="blocks")blocks();if(name==="racer")racer();}
@@ -50,7 +50,7 @@ function memoryRoomSetup(){
 }
 function makeRoomCode(){const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);return [...bytes].map(b=>chars[b%chars.length]).join("");}
 async function createMemoryRoom(){
- if(!miniAuthReady){$("memoryRoomStatus").textContent="Online play is not available right now. Refresh and try again.";return;}
+ try{await ensureMemorySignIn();}catch(e){$("memoryRoomStatus").textContent=e.message||"Sign in to play online.";return;}
  $("memoryCreateRoom").disabled=true;
  try{
   let code="",ok=false;
@@ -63,7 +63,7 @@ async function createMemoryRoom(){
  }catch(e){$("memoryRoomStatus").textContent=e.message||"Could not create room.";$("memoryCreateRoom").disabled=false;}
 }
 async function joinMemoryRoom(code){
- if(!miniAuthReady){$("memoryRoomStatus").textContent="Online play is not available right now.";return;}
+ try{await ensureMemorySignIn();}catch(e){$("memoryRoomStatus").textContent=e.message||"Sign in to play online.";return;}
  if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){$("memoryRoomStatus").textContent="Enter a valid six-character code.";return;}
  $("memoryJoinRoom").disabled=true;
  try{

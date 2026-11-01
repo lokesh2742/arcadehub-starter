@@ -61,3 +61,13 @@ The username search reads the exact path `playerDirectory/{username}`. If the di
 Also make sure the existing rules allow each signed-in user to read/write only their own `playerUsernames/{uid}` mapping. The app repairs a missing directory entry on sign-in, so after publishing the rule, both players should sign out and sign back in once, then search using the username without the `@` (the search box also accepts it).
 
 If search still returns a Firebase `PERMISSION_DENIED` error, the remaining issue is in the database rules for `playerDirectory` or `friendRequests`, not the displayed username. Never enable unrestricted public database read/write.
+
+### Important: accepting an invite
+
+When a recipient accepts a game invitation, the app writes an `accepted_` acknowledgement into the inviter's inbox so the inviter's device can launch the same room. Your `gameInvites/{recipientUid}/{inviteId}` write rule must therefore allow the authenticated recipient to update their own invite and allow the authenticated accepter to write an acknowledgement where `acceptedBy` equals their UID. A suitable child-level condition is:
+
+```json
+".write": "auth != null && (auth.uid === $recipientUid || newData.child('fromUid').val() === auth.uid || newData.child('acceptedBy').val() === auth.uid)"
+```
+
+Keep the parent `gameInvites` read permission restricted to the recipient UID. Do not make the whole invitations tree publicly readable.

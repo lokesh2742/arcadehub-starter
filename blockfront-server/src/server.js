@@ -7,10 +7,12 @@ const MAX_PLAYERS = Math.min(12, Math.max(2, Number(process.env.MAX_PLAYERS || 8
 const TICK_RATE = 20;
 const rooms = new Map();
 const weapons = {
-  rifle: { damage: 25, range: 55, cooldown: 180, magazine: 30, reserve: 120 },
-  burst: { damage: 19, range: 48, cooldown: 260, magazine: 24, reserve: 96 },
-  scatter: { damage: 12, range: 19, cooldown: 650, magazine: 8, reserve: 48 },
-  sidearm: { damage: 34, range: 42, cooldown: 330, magazine: 12, reserve: 72 }
+  akm: { damage: 34, range: 55, cooldown: 105, magazine: 30, reserve: 180 },
+  m416: { damage: 27, range: 58, cooldown: 88, magazine: 30, reserve: 180 },
+  awm: { damage: 100, range: 90, cooldown: 1050, magazine: 5, reserve: 35 },
+  ump: { damage: 29, range: 42, cooldown: 115, magazine: 25, reserve: 150 },
+  dbs: { damage: 13, range: 20, cooldown: 520, magazine: 14, reserve: 56 },
+  pistol: { damage: 42, range: 38, cooldown: 260, magazine: 15, reserve: 90 }
 };
 
 const code = () => {
@@ -45,7 +47,7 @@ function joinRoom(room, ws, name) {
   if (room.players.size >= room.limit) return null;
   const id = randomUUID();
   const [x, y, z] = spawn(room.players.size);
-  const player = { id, name: safeName(name), ws, x, y, z, yaw: 0, pitch: 0, health: 100, score: 0, deaths: 0, weapon: "rifle", ammo: { rifle: 30, burst: 24, scatter: 8, sidearm: 12 }, reserve: { rifle: 120, burst: 96, scatter: 48, sidearm: 72 }, lastShot: 0, lastInput: 0 };
+  const player = { id, name: safeName(name), ws, x, y, z, yaw: 0, pitch: 0, health: 100, score: 0, deaths: 0, weapon: "akm", ammo: { akm: 30, m416: 30, awm: 5, ump: 25, dbs: 14, pistol: 15 }, reserve: { akm: 180, m416: 180, awm: 35, ump: 150, dbs: 56, pistol: 90 }, lastShot: 0, lastInput: 0 };
   room.players.set(id, player);
   if (!room.hostId) room.hostId = id;
   return player;
@@ -109,7 +111,7 @@ function handleMessage(room, player, msg) {
     send(player.ws, "ammo", { ammo: player.ammo, reserve: player.reserve, score: player.score });
     return;
   }
-  if (msg.type === "weapon" && Object.hasOwn(weapons, msg.weapon)) {
+  if (msg.type === "weapon" && player.health <= 0 && Object.hasOwn(weapons, msg.weapon)) {
     player.weapon = msg.weapon;
     send(player.ws, "ammo", { ammo: player.ammo, reserve: player.reserve, score: player.score, weapon: player.weapon });
   }

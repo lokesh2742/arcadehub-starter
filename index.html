@@ -147,23 +147,11 @@
   </section>
   <section class="mini-game-screen" id="miniGameScreen" hidden><div class="mini-game-top"><button class="secondary-button" id="miniGameBack">← All games</button><h2 id="miniGameTitle">Game</h2><button class="secondary-button" id="miniGameRestart">Restart ↻</button></div><div class="mini-game-body" id="miniGameBody"></div></section>
   
-  <div class="welcome-overlay" id="welcomeOverlay">
-    <form class="welcome-dialog" id="welcomeForm">
-      <div class="welcome-logo">A</div><p class="eyebrow">WELCOME TO ARCADEHUB</p>
-      <h2>First, what should we call you?</h2><p class="muted">Your name appears on your player profile and in multiplayer rooms.</p>
-      <label for="welcomeNameInput">YOUR PLAYER NAME</label><input id="welcomeNameInput" maxlength="16" required autocomplete="nickname" placeholder="Enter your name"/>
-      <button class="primary-button full-button" type="submit">Let's play <span>→</span></button>
-    </form>
-  </div>
-  <div class="profile-overlay" id="profileOverlay" hidden>
-    <form class="profile-dialog" id="profileForm">
-      <button class="profile-close" id="closeProfileButton" type="button" aria-label="Close">×</button>
-      <div class="profile-avatar large" id="profileLargeAvatar">?</div><p class="eyebrow">YOUR PLAYER PROFILE</p><h2>Player profile</h2>
-      <label for="profileNameInput">DISPLAY NAME</label><input id="profileNameInput" maxlength="16" required/>
-      <p class="profile-device-note">Your profile is saved on this device. You can change your name whenever you like.</p>
-      <button class="primary-button full-button" type="submit">Save changes</button>
-    </form>
-  </div>
+  <div class="profile-overlay" id="profileOverlay" hidden><div class="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <button class="profile-close" id="closeProfileButton" type="button" aria-label="Close">×</button><div class="profile-avatar large" id="profileLargeAvatar">?</div>
+    <p class="eyebrow">YOUR ARCADEHUB ACCOUNT</p><h2 id="profileTitle">Player profile</h2><p class="profile-device-note" id="profileAccountStatus">Playing as a guest</p>
+    <button class="primary-button full-button" id="googleSignInButton" type="button">Continue with Google</button><button class="secondary-button full-button" id="signOutButton" type="button" hidden>Sign out</button>
+    <p class="profile-device-note">Sign in is only needed for online multiplayer and the leaderboard. Solo games remain available as a guest.</p></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="script.js?v=arcadehub-4"></script>

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#10111b" />
   <title>ArcadeHub — Play Together</title>
-  <link rel="stylesheet" href="style.css?v=arcadehub-5" />
+  <link rel="stylesheet" href="style.css?v=arcadehub-6" />
 </head>
 <body>
   <header class="topbar">
@@ -112,6 +112,7 @@
         <div class="room-panel"><span class="panel-icon">✦</span><h3>Create a room</h3><p>You'll be Player X. Your friend joins as O.</p><button class="primary-button full-button" id="createRoomButton">Create room</button></div>
         <div class="room-panel"><span class="panel-icon">↗</span><h3>Join a room</h3><p>Enter the six-character code from your friend.</p><form id="joinRoomForm"><input id="roomCodeInput" maxlength="6" placeholder="ROOM CODE" autocomplete="off" required/><button class="secondary-button full-button" type="submit">Join room</button></form></div>
       </div>
+      <div class="game-invite-panel" id="ticFriendInvites"><p class="game-help">Loading online friends…</p></div>
       <button class="text-button" id="onlineBackButton">← Back to modes</button>
       <p class="setup-note">Online play requires an internet connection and the Firebase setup described below.</p>
     </div>
@@ -153,11 +154,11 @@
     <button class="primary-button full-button" id="googleSignInButton" type="button">Continue with Google</button><button class="secondary-button full-button" id="signOutButton" type="button" hidden>Sign out</button>
     <p class="profile-device-note">Sign in is only needed for online multiplayer and the leaderboard. Solo games remain available as a guest.</p></div></div>
 
-  <div class="friends-overlay" id="friendsOverlay" hidden><section class="friends-dialog" role="dialog" aria-modal="true" aria-labelledby="friendsTitle"><button class="profile-close" id="closeFriendsButton" type="button" aria-label="Close">×</button><p class="eyebrow">ARCADEHUB SOCIAL</p><h2 id="friendsTitle">Your friends</h2><p class="friends-id-line">Your Friend ID: <b id="myFriendCode">Sign in to get your ID</b> <button class="secondary-button" id="copyFriendCode" type="button">Copy</button></p><div class="friends-tabs"><button class="friends-tab active" data-friends-tab="friends">Friends</button><button class="friends-tab" data-friends-tab="search">Find players</button><button class="friends-tab" data-friends-tab="inbox">Inbox <span id="inboxCount"></span></button></div><section id="friendsListPanel"><div id="friendsList" class="friends-list"><p class="game-help">Sign in with Google to see your friends.</p></div></section><section id="friendsSearchPanel" hidden><label class="friends-search-label" for="friendSearchInput">SEARCH BY FRIEND ID</label><div class="friends-search-row"><input id="friendSearchInput" maxlength="10" placeholder="e.g. A7K9P2Q4"><button class="primary-button" id="friendSearchButton">Search</button></div><div id="friendSearchResult" class="friends-list"></div></section><section id="friendsInboxPanel" hidden><div id="friendsInbox" class="friends-list"><p class="game-help">Your friend requests and game invitations will appear here.</p></div></section><p id="friendsStatus" class="game-help" aria-live="polite"></p></section></div>
+  <div class="friends-overlay" id="friendsOverlay" hidden><section class="friends-dialog" role="dialog" aria-modal="true" aria-labelledby="friendsTitle"><button class="profile-close" id="closeFriendsButton" type="button" aria-label="Close">×</button><p class="eyebrow">ARCADEHUB SOCIAL</p><h2 id="friendsTitle">Your friends</h2><p class="friends-id-line">Your username: <b id="myFriendCode">Sign in to get your username</b> <button class="secondary-button" id="copyFriendCode" type="button">Copy</button></p><div class="friends-tabs"><button class="friends-tab active" data-friends-tab="friends">Friends</button><button class="friends-tab" data-friends-tab="search">Find players</button><button class="friends-tab" data-friends-tab="inbox">Inbox <span id="inboxCount"></span></button></div><section id="friendsListPanel"><div id="friendsList" class="friends-list"><p class="game-help">Sign in with Google to see your friends.</p></div></section><section id="friendsSearchPanel" hidden><label class="friends-search-label" for="friendSearchInput">SEARCH BY USERNAME</label><div class="friends-search-row"><input id="friendSearchInput" maxlength="32" placeholder="e.g. @alex.12ab34"><button class="primary-button" id="friendSearchButton">Search</button></div><div id="friendSearchResult" class="friends-list"></div></section><section id="friendsInboxPanel" hidden><div id="friendsInbox" class="friends-list"><p class="game-help">Your friend requests and game invitations will appear here.</p></div></section><p id="friendsStatus" class="game-help" aria-live="polite"></p></section></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="script.js?v=arcadehub-6"></script>
-  <script type="module" src="mini-games.js?v=arcadehub-6"></script>
-  <script type="module" src="friends.js?v=arcadehub-1"></script>
+  <script type="module" src="script.js?v=arcadehub-7"></script>
+  <script type="module" src="mini-games.js?v=arcadehub-7"></script>
+  <script type="module" src="friends.js?v=arcadehub-2"></script>
 </body>
 </html>

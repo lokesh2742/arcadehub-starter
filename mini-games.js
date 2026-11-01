@@ -25,8 +25,9 @@ document.querySelectorAll(".game-card[data-game='upcoming']").forEach(b=>b.addEv
 document.querySelectorAll(".game-card[data-game='memory'],.game-card[data-game='snake'],.game-card[data-game='2048'],.game-card[data-game='blocks'],.game-card[data-game='racer']").forEach(b=>b.addEventListener("click",()=>openGame(b.dataset.game)));
 
 function memoryMenu(){
- $("miniGameBody").innerHTML='<div class="memory-welcome"><div class="memory-hero-icons"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><p class="eyebrow">TEST YOUR MEMORY</p><h2>Match the pairs.</h2><p class="game-help">Play solo or challenge a friend in a private room. In online mode, players take turns and earn points for every pair they find.</p><div class="memory-mode-grid"><button class="memory-mode-card" id="memorySolo"><span>🧠</span><b>Solo challenge</b><small>Beat your best score</small></button><button class="memory-mode-card" id="memoryOnline"><span>🌐</span><b>Custom room</b><small>Play with a friend online</small></button></div></div>';
+ $("miniGameBody").innerHTML='<div class="memory-welcome"><div class="memory-hero-icons"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><p class="eyebrow">TEST YOUR MEMORY</p><h2>Match the pairs.</h2><p class="game-help">Play solo or challenge a friend in a private room. Invite a friend who is currently online.</p><div class="memory-mode-grid"><button class="memory-mode-card" id="memorySolo"><span>🧠</span><b>Solo challenge</b><small>Beat your best score</small></button><button class="memory-mode-card" id="memoryOnline"><span>🌐</span><b>Custom room</b><small>Play with a friend online</small></button></div></div>';
  $("memorySolo").onclick=()=>memorySolo();
+ window.arcadeHubRenderGameInvites?.("memoryFriendInvites","memory");
  $("memoryOnline").onclick=()=>memoryRoomSetup();
 }
 function shuffledDeck(){const a=["◆","●","▲","★","♥","☀","☂","✿"];return [...a,...a].sort(()=>Math.random()-.5);}
@@ -44,7 +45,7 @@ function memorySolo(){
 }
 
 function memoryRoomSetup(){
- $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">PRIVATE MULTIPLAYER</p><h2>Play with a friend.</h2><p class="game-help">Create a room and share its six-character code, or join a room created by a friend.</p><button class="primary-button full-button" id="memoryCreateRoom">Create custom room</button><div class="room-code-entry"><input id="memoryJoinCode" maxlength="6" placeholder="ENTER ROOM CODE" autocomplete="off"/><button class="secondary-button" id="memoryJoinRoom">Join room</button></div><p class="game-help" id="memoryRoomStatus"></p></div>';
+ $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">PRIVATE MULTIPLAYER</p><h2>Play with a friend.</h2><p class="game-help">Create a room and share its six-character code, or join a room created by a friend.</p><button class="primary-button full-button" id="memoryCreateRoom">Create custom room</button><div class="room-code-entry"><input id="memoryJoinCode" maxlength="6" placeholder="ENTER ROOM CODE" autocomplete="off"/><button class="secondary-button" id="memoryJoinRoom">Join room</button></div><div class="game-invite-panel" id="memoryFriendInvites"><p class="game-help">Loading online friends…</p></div><p class="game-help" id="memoryRoomStatus"></p></div>';
  $("memoryCreateRoom").onclick=createMemoryRoom;
  $("memoryJoinRoom").onclick=()=>joinMemoryRoom($("memoryJoinCode").value.trim().toUpperCase());
 }

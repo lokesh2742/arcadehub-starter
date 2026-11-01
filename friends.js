@@ -1,36 +1,44 @@
 import {getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getDatabase,ref,get,set,update,remove,onValue,runTransaction,push} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
-const $=id=>document.getElementById(id);
-const app=getApps().find(a=>a.name==="[DEFAULT]");
-if(!app){console.warn("[ArcadeHub] Friends need Firebase.");}
+import {getDatabase,ref,get,set,update,remove,onValue,runTransaction,push,onDisconnect} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+const $=id=>document.getElementById(id),app=getApps().find(a=>a.name==="[DEFAULT]");
 const auth=app?getAuth(app):null,db=app?getDatabase(app):null;
-let user=null,friendCode="",friends={},requests={},invites={},unsubs=[],launched={};
+let user=null,username="",friends={},requests={},invites={},presence={},presenceWatchers={},unsubs=[],presenceOff=null,launched={};
 const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const say=s=>{if($("friendsStatus"))$("friendsStatus").textContent=s;};
-function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];}
+const online=uid=>presence[uid]?.state==="online";
+function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];presenceWatchers={};if(presenceOff){presenceOff();presenceOff=null;}}
+function makeUsername(u){
+ const base=(u.displayName||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,".").replace(/^\.|\.$/g,"").slice(0,18)||"player";
+ return (base+"."+u.uid.slice(-6)).toLowerCase();
+}
 async function ensureProfile(u){
- const codeRef=ref(db,"playerCodes/"+u.uid),existing=await get(codeRef);
- if(existing.exists()){friendCode=existing.val().code;return;}
- let code="",created=false;
- for(let n=0;n<8&&!created;n++){
-  const bytes=new Uint8Array(8);crypto.getRandomValues(bytes);code=[...bytes].map(b=>chars[b%chars.length]).join("");
-  const result=await runTransaction(ref(db,"playerDirectory/"+code),old=>old===null?{uid:u.uid,name:u.displayName||"ArcadeHub Player",friendCode:code,createdAt:Date.now()}:undefined);
-  if(result.committed){created=true;await set(codeRef,{code});}
- }
- if(!created)throw Error("Couldn't create your Friend ID. Please try again.");
+ const profileRef=ref(db,"playerUsernames/"+u.uid),existing=await get(profileRef);
+ if(existing.exists()){username=existing.val().username;return;}
+ username=makeUsername(u);
+ const directoryRef=ref(db,"playerDirectory/"+username);
+ const result=await runTransaction(directoryRef,old=>old===null?{uid:u.uid,name:u.displayName||"ArcadeHub Player",username,createdAt:Date.now()}:undefined);
+ if(!result.committed){const current=await get(directoryRef);if(!current.exists()||current.val().uid!==u.uid)throw Error("That username is already taken. Please sign in again or contact support.");}
+ await set(profileRef,{username});
+}
+async function startPresence(){
+ const statusRef=ref(db,"presence/"+user.uid);
+ const connectedRef=ref(db,".info/connected");
+ presenceOff=onValue(connectedRef,async snap=>{
+  if(snap.val()!==true)return;
+  try{await onDisconnect(statusRef).set({state:"offline",lastChanged:Date.now()});await set(statusRef,{state:"online",username,name:user.displayName||username,lastChanged:Date.now()});}
+  catch(e){say("Presence could not start: "+(e.message||"database permission denied"));}
+ });
 }
 function renderFriends(){
  const list=$("friendsList");if(!list)return;
  const entries=Object.entries(friends);
- list.innerHTML=entries.length?entries.map(([uid,f])=>'<div class="friend-row"><span class="friend-avatar">'+esc((f.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(f.name||"Player")+'</b><small>'+esc(f.friendCode||"ArcadeHub friend")+'</small></span><button class="secondary-button" data-invite="'+esc(uid)+'" data-game="tictactoe">Tic Tac Toe</button><button class="secondary-button" data-invite="'+esc(uid)+'" data-game="memory">Memory</button></div>').join(""):'<p class="game-help">No friends yet. Find a player by their Friend ID.</p>';
- list.querySelectorAll("[data-invite]").forEach(b=>b.onclick=()=>sendInvite(b.dataset.invite,b.dataset.game));
+ list.innerHTML=entries.length?entries.map(([uid,f])=>'<div class="friend-row"><span class="friend-avatar">'+esc((f.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(f.name||"Player")+'</b><small>@'+esc(f.username||"player")+' · '+(online(uid)?'<i class="online-dot"></i> Online':'Offline')+'</small></span></div>').join(""):'<p class="game-help">No friends yet. Search for a friend by their unique username.</p>';
 }
 function renderInbox(){
- const box=$("friendsInbox");if(!box)return;
- const rows=[];
- for(const [uid,r] of Object.entries(requests))rows.push('<div class="friend-row"><span class="friend-avatar">+</span><span class="friend-details"><b>'+esc(r.name||"Player")+'</b><small>Friend request · '+esc(r.friendCode||"")+'</small></span><button class="primary-button" data-accept-friend="'+esc(uid)+'">Accept</button><button class="secondary-button" data-decline-friend="'+esc(uid)+'">Decline</button></div>');
+ const box=$("friendsInbox");if(!box)return;const rows=[];
+ for(const [uid,r] of Object.entries(requests))rows.push('<div class="friend-row"><span class="friend-avatar">+</span><span class="friend-details"><b>'+esc(r.name||"Player")+'</b><small>Friend request · @'+esc(r.username||"player")+'</small></span><button class="primary-button" data-accept-friend="'+esc(uid)+'">Accept</button><button class="secondary-button" data-decline-friend="'+esc(uid)+'">Decline</button></div>');
  for(const [id,v] of Object.entries(invites))if(v.status==="pending")rows.push('<div class="friend-row"><span class="friend-avatar">🎮</span><span class="friend-details"><b>'+esc(v.fromName||"Player")+'</b><small>Invited you to '+esc(v.game==="memory"?"Memory Match":"Tic Tac Toe")+'</small></span><button class="primary-button" data-accept-invite="'+esc(id)+'">Play</button><button class="secondary-button" data-decline-invite="'+esc(id)+'">No thanks</button></div>');
  box.innerHTML=rows.length?rows.join(""):'<p class="game-help">Your inbox is clear. Friend requests and game invites will show up here.</p>';
  box.querySelectorAll("[data-accept-friend]").forEach(b=>b.onclick=()=>acceptFriend(b.dataset.acceptFriend));
@@ -40,83 +48,85 @@ function renderInbox(){
  const count=Object.keys(requests).length+Object.values(invites).filter(v=>v.status==="pending").length;
  $("inboxCount").textContent=count?String(count):"";$("friendNotice").hidden=!count;
 }
-function listenSocial(){
- stopListeners();
- const add=(path,cb)=>unsubs.push(onValue(ref(db,path),snap=>cb(snap.val()||{}),e=>say(e.message||"Could not load social data.")));
- add("friends/"+user.uid,async data=>{friends=data;renderFriends();});
- add("friendRequests/"+user.uid,data=>{requests=data;renderInbox();});
- add("gameInvites/"+user.uid,data=>{invites=data;renderInbox();});
+function renderGameInvites(containerId,game){
+ const box=$(containerId);if(!box)return;
+ const entries=Object.entries(friends).filter(([uid])=>online(uid));
+ box.innerHTML='<div class="game-invite-heading"><b>Invite an online friend</b><span class="online-count">'+entries.length+' online</span></div>'+
+ (entries.length?entries.map(([uid,f])=>'<div class="game-invite-row"><span>'+esc(f.name||"Player")+' <small>@'+esc(f.username||"")+'</small></span><button class="secondary-button" data-game-invite="'+esc(uid)+'">Invite</button></div>').join(""):'<p class="game-help">No friends are online right now. They must be signed in and have ArcadeHub open.</p>')+
+ '<p class="game-help invite-feedback" aria-live="polite"></p>';
+ box.querySelectorAll("[data-game-invite]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await sendInvite(b.dataset.gameInvite,game);box.querySelector(".invite-feedback").textContent="Invitation sent!";}catch(e){box.querySelector(".invite-feedback").textContent=e.message||"Could not send invitation.";}finally{b.disabled=false;}});
 }
+window.arcadeHubRenderGameInvites=(containerId,game)=>renderGameInvites(containerId,game);
 async function acceptFriend(uid){
  try{
   const snap=await get(ref(db,"friendRequests/"+user.uid+"/"+uid));if(!snap.exists())return;
-  const request=snap.val(),me={uid:user.uid,name:user.displayName||"Player",friendCode};
-  const updates={};updates["friends/"+user.uid+"/"+uid]={uid,name:request.name||"Player",friendCode:request.friendCode||""};updates["friends/"+uid+"/"+user.uid]=me;updates["friendRequests/"+user.uid+"/"+uid]=null;
-  await update(ref(db),updates);say("Friend added!"); 
- }catch(e){say(e.message||"Could not accept request.");}
+  const request=snap.val(),me={uid:user.uid,name:user.displayName||"Player",username};
+  const updates={};updates["friends/"+user.uid+"/"+uid]={uid,name:request.name||"Player",username:request.username||""};updates["friends/"+uid+"/"+user.uid]=me;updates["friendRequests/"+user.uid+"/"+uid]=null;
+  await update(ref(db),updates);say("Friend added!");
+ }catch(e){say(e.message||"Could not accept request. Check Firebase database rules.");}
 }
 async function searchPlayer(){
- const code=$("friendSearchInput").value.trim().toUpperCase(),out=$("friendSearchResult");
- out.innerHTML="";
- if(!/^[A-HJ-NP-Z2-9]{8}$/.test(code)){say("Enter a valid 8-character Friend ID.");return;}
+ const query=$("friendSearchInput").value.trim().replace(/^@/,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
+ if(!/^[a-z0-9.]{3,32}$/.test(query)){say("Enter the player's username (for example, @alex.12ab34).");return;}
  try{
-  const snap=await get(ref(db,"playerDirectory/"+code));
-  if(!snap.exists()){out.innerHTML='<p class="game-help">No player found with that Friend ID.</p>';return;}
-  const p=snap.val();if(p.uid===user.uid){out.innerHTML='<p class="game-help">That is your own Friend ID.</p>';return;}
+  const snap=await get(ref(db,"playerDirectory/"+query));
+  if(!snap.exists()){out.innerHTML='<p class="game-help">No player found. Check the username and try again.</p>';return;}
+  const p=snap.val();if(p.uid===user.uid){out.innerHTML='<p class="game-help">That is your own username.</p>';return;}
   if(friends[p.uid]){out.innerHTML='<p class="game-help">You are already friends with '+esc(p.name)+'.</p>';return;}
-  const incoming=requests[p.uid];
-  out.innerHTML='<div class="friend-row"><span class="friend-avatar">'+esc((p.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(p.name||"Player")+'</b><small>'+esc(code)+'</small></span><button class="primary-button" id="sendFriendRequest">'+(incoming?"Request received":"Add friend")+'</button></div>';
-  if(!incoming)$("sendFriendRequest").onclick=async()=>{try{await set(ref(db,"friendRequests/"+p.uid+"/"+user.uid),{uid:user.uid,name:user.displayName||"Player",friendCode,createdAt:Date.now()});say("Friend request sent!");$("sendFriendRequest").disabled=true;$("sendFriendRequest").textContent="Sent";}catch(e){say(e.message||"Could not send request.");}};
- }catch(e){say(e.message||"Player search failed. Check database permissions.");}
+  const sent=await get(ref(db,"friendRequests/"+p.uid+"/"+user.uid));
+  const incoming=await get(ref(db,"friendRequests/"+user.uid+"/"+p.uid));
+  const alreadySent=sent.exists(),hasIncoming=incoming.exists();
+  out.innerHTML='<div class="friend-row"><span class="friend-avatar">'+esc((p.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(p.name||"Player")+'</b><small>@'+esc(p.username||query)+' · '+(online(p.uid)?'<i class="online-dot"></i> Online':'Offline')+'</small></span><button class="primary-button" id="sendFriendRequest" '+(alreadySent||hasIncoming?'disabled':'')+'>'+(alreadySent?"Request sent":hasIncoming?"Accept from Inbox":"Add friend")+'</button></div>';
+  if(!alreadySent&&!hasIncoming)$("sendFriendRequest").onclick=async()=>{try{await set(ref(db,"friendRequests/"+p.uid+"/"+user.uid),{uid:user.uid,name:user.displayName||"Player",username,createdAt:Date.now()});say("Friend request sent to @"+query);$("sendFriendRequest").disabled=true;$("sendFriendRequest").textContent="Sent";}catch(e){say(e.message||"Could not send request. Check Firebase database rules.");}};
+ }catch(e){say(e.message||"Player search failed. Check Firebase database rules.");}
 }
 async function sendInvite(uid,type){
- if(!["memory","tictactoe"].includes(type)){say("Choose one of the available multiplayer games.");return;}
- try{
-  const target=await get(ref(db,"friends/"+user.uid+"/"+uid));if(!target.exists())throw Error("That player is not in your friend list.");
-  const inviteRef=push(ref(db,"gameInvites/"+uid));
-  await set(inviteRef,{fromUid:user.uid,fromName:user.displayName||"Player",toUid:uid,game:type,status:"pending",createdAt:Date.now()});
-  say("Game invitation sent to "+(target.val().name||"your friend")+".");
- }catch(e){say(e.message||"Could not send invitation.");}
+ if(!["memory","tictactoe"].includes(type))throw Error("This game is not available for invitations.");
+ const target=await get(ref(db,"friends/"+user.uid+"/"+uid));if(!target.exists())throw Error("That player is not in your friend list.");
+ const status=await get(ref(db,"presence/"+uid));if(status.val()?.state!=="online")throw Error("Your friend is offline. Invitations can only be sent to online friends.");
+ const inviteRef=push(ref(db,"gameInvites/"+uid));
+ await set(inviteRef,{fromUid:user.uid,fromName:user.displayName||username,fromUsername:username,toUid:uid,game:type,status:"pending",createdAt:Date.now()});
+ return target.val().name||"your friend";
 }
 function makeCode(){const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);return [...bytes].map(b=>chars[b%chars.length]).join("");}
 async function acceptInvite(id){
  const invite=invites[id];if(!invite||invite.status!=="pending")return;
  try{
-  const code=makeCode(),players={X:{id:user.uid,name:user.displayName||"Player"},O:{id:invite.fromUid,name:invite.fromName||"Friend"}};
-  let roomData=invite.game==="memory"?{type:"memory",status:"playing",players,deck:["◆","●","▲","★","♥","☀","☂","✿","◆","●","▲","★","♥","☀","☂","✿"].sort(()=>Math.random()-.5),matched:[],picks:[],turn:"X",scores:{X:0,O:0},moves:0,phase:"ready"}:{type:"tictactoe",status:"playing",hostId:user.uid,createdAt:Date.now(),players,board:Array(9).fill(""),turn:"X",round:1,scores:{X:0,O:0},winner:null,rematchRequests:{X:false,O:false}};
-  const roomRef=ref(db,"rooms/"+code),made=await runTransaction(roomRef,old=>old===null?roomData:undefined);
+  const code=makeCode(),players={X:{id:user.uid,name:user.displayName||username},O:{id:invite.fromUid,name:invite.fromName||"Friend"}};
+  const roomData=invite.game==="memory"?{type:"memory",status:"playing",players,deck:["◆","●","▲","★","♥","☀","☂","✿","◆","●","▲","★","♥","☀","☂","✿"].sort(()=>Math.random()-.5),matched:[],picks:[],turn:"X",scores:{X:0,O:0},moves:0,phase:"ready"}:{type:"tictactoe",status:"playing",hostId:user.uid,createdAt:Date.now(),players,board:Array(9).fill(""),turn:"X",round:1,scores:{X:0,O:0},winner:null,rematchRequests:{X:false,O:false}};
+  const made=await runTransaction(ref(db,"rooms/"+code),old=>old===null?roomData:undefined);
   if(!made.committed)throw Error("Could not prepare the game room. Please try again.");
   await update(ref(db,"gameInvites/"+user.uid+"/"+id),{status:"accepted",roomCode:code,acceptedBy:user.uid});
   await set(ref(db,"gameInvites/"+invite.fromUid+"/accepted_"+id),{...invite,status:"accepted",roomCode:code,acceptedBy:user.uid,acceptedAt:Date.now()});
   launch(invite.game,code,"X");
  }catch(e){say(e.message||"Could not start the invited game.");}
 }
-function launch(game,code,mark){
- const key=game+":"+code;if(launched[key])return;launched[key]=true;
- if(game==="memory")window.arcadeHubStartInvitedMemory?.(code,mark);
- else window.arcadeHubStartInvitedTicTacToe?.(code,mark);
+function launch(game,code,mark){const key=game+":"+code;if(launched[key])return;launched[key]=true;if(game==="memory")window.arcadeHubStartInvitedMemory?.(code,mark);else window.arcadeHubStartInvitedTicTacToe?.(code,mark);}
+function listenSocial(){
+ stopListeners();
+ const add=(path,cb)=>unsubs.push(onValue(ref(db,path),snap=>cb(snap.val()||{}),e=>say(e.message||"Could not load social data.")));
+ add("friends/"+user.uid,data=>{friends=data;Object.keys(friends).forEach(uid=>{if(!presenceWatchers[uid]){const off=onValue(ref(db,"presence/"+uid),snap=>{presence[uid]=snap.val()||{};renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});presenceWatchers[uid]=off;unsubs.push(off);}});renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});
+ add("friendRequests/"+user.uid,data=>{requests=data;renderInbox();});
+ add("gameInvites/"+user.uid,data=>{invites=data;renderInbox();});
+
 }
 function listenAccepted(){
- unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{
-  const data=snap.val()||{};
-  Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});
- }));
+ unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{const data=snap.val()||{};Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});}));
 }
-function showTab(tab){
- ["friends","search","inbox"].forEach(name=>{$("friends"+(name==="friends"?"List":"")+(name==="search"?"Search":"")+(name==="inbox"?"Inbox":"")+"Panel").hidden=name!==tab;});
- document.querySelectorAll(".friends-tab").forEach(b=>b.classList.toggle("active",b.dataset.friendsTab===tab));
-}
+function acceptAndClear(id){return acceptInvite(id);}
+function showTab(tab){["friends","search","inbox"].forEach(name=>{$("friends"+(name==="friends"?"List":name==="search"?"Search":"Inbox")+"Panel").hidden=name!==tab;});document.querySelectorAll(".friends-tab").forEach(b=>b.classList.toggle("active",b.dataset.friendsTab===tab));}
 $("friendsButton").addEventListener("click",()=>{$("friendsOverlay").hidden=false;});
-$("closeFriendsButton").addEventListener("click",()=>{$("friendsOverlay").hidden=true;});
+$("closeFriendsButton").addEventListener("click",()=>$("friendsOverlay").hidden=true);
 $("friendsOverlay").addEventListener("click",e=>{if(e.target===$("friendsOverlay"))$("friendsOverlay").hidden=true;});
 document.querySelectorAll(".friends-tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.friendsTab)));
 $("friendSearchButton").addEventListener("click",searchPlayer);
 $("friendSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayer();});
-$("copyFriendCode").addEventListener("click",async()=>{if(friendCode)try{await navigator.clipboard.writeText(friendCode);say("Friend ID copied.");}catch{say("Your Friend ID is "+friendCode);}});
+$("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is @"+username);}});
 onAuthStateChanged(auth,async u=>{
- user=u;stopListeners();friendCode="";friends={};requests={};invites={};
- $("myFriendCode").textContent=u?"Creating your ID…":"Sign in with Google to get a Friend ID";
+ if(user?.uid&&!u)update(ref(db,"presence/"+user.uid),{state:"offline",lastChanged:Date.now()}).catch(()=>{});
+ user=u;stopListeners();username="";friends={};requests={};invites={};presence={};
+ $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}
- try{await ensureProfile(u);$("myFriendCode").textContent=friendCode;listenSocial();listenAccepted();renderFriends();renderInbox();say("Your Friend ID is ready. Share it so friends can find you.");}
+ try{await ensureProfile(u);$("myFriendCode").textContent="@"+username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
  catch(e){say(e.message||"Could not set up your player profile.");}
 });

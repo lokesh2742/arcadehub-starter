@@ -327,3 +327,14 @@ main{width:min(100%,var(--content-width));padding-inline:clamp(18px,4vw,52px)}
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* Username-based friend discovery, live presence and in-game invites */
+.game-invite-panel{margin:18px auto 12px;padding:16px;border:1px solid #a78bfa35;border-radius:13px;background:#1d1e2d;text-align:left;max-width:620px}
+.game-invite-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:12px}
+.online-count{font-size:10px;color:var(--green)}
+.game-invite-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:12px}
+.game-invite-row small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.game-invite-row button{padding:8px 13px;white-space:nowrap}
+.invite-feedback{margin:8px 0 0}
+.online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#69e6a8;box-shadow:0 0 8px #69e6a8;margin-right:4px}
+@media(max-width:560px){.game-invite-panel{padding:12px}.game-invite-row{align-items:flex-start}.game-invite-row button{padding:8px 10px}}

@@ -47,7 +47,7 @@ function joinRoom(room, ws, name) {
   if (room.players.size >= room.limit) return null;
   const id = randomUUID();
   const [x, y, z] = spawn(room.players.size);
-  const player = { id, name: safeName(name), ws, x, y, z, yaw: 0, pitch: 0, health: 100, score: 0, deaths: 0, weapon: "akm", ammo: { akm: 30, m416: 30, awm: 5, ump: 25, dbs: 14, pistol: 15 }, reserve: { akm: 180, m416: 180, awm: 35, ump: 150, dbs: 56, pistol: 90 }, lastShot: 0, lastInput: 0 };
+  const player = { id, name: safeName(name), ws, x, y, z, yaw: 0, pitch: 0, health: 100, score: 0, deaths: 0, weapon: "akm", ammo: { akm: 30, m416: 30, awm: 5, ump: 25, dbs: 14, pistol: 15 }, reserve: { akm: 180, m416: 180, awm: 35, ump: 150, dbs: 56, pistol: 90 }, lastShot: 0, lastInput: 0, weaponChangeUntil: 0 };
   room.players.set(id, player);
   if (!room.hostId) room.hostId = id;
   return player;
@@ -97,7 +97,7 @@ function handleMessage(room, player, msg) {
       if (target.health === 0) {
         player.score++;
         target.deaths++;
-        setTimeout(() => { if (room.players.has(target.id)) { respawn(target); broadcast(room, "respawn", { player: publicPlayer(target) }); } }, 1800);
+        setTimeout(() => { if (room.players.has(target.id)) { respawn(target); target.weaponChangeUntil = Date.now() + 10000; broadcast(room, "respawn", { player: publicPlayer(target) }); } }, 1800);
       }
       broadcast(room, "hit", { shooterId: player.id, target: publicPlayer(target), shooterScore: player.score });
     }
@@ -111,7 +111,7 @@ function handleMessage(room, player, msg) {
     send(player.ws, "ammo", { ammo: player.ammo, reserve: player.reserve, score: player.score });
     return;
   }
-  if (msg.type === "weapon" && player.health <= 0 && Object.hasOwn(weapons, msg.weapon)) {
+  if (msg.type === "weapon" && (player.health <= 0 || Date.now() <= player.weaponChangeUntil) && Object.hasOwn(weapons, msg.weapon)) {
     player.weapon = msg.weapon;
     send(player.ws, "ammo", { ammo: player.ammo, reserve: player.reserve, score: player.score, weapon: player.weapon });
   }

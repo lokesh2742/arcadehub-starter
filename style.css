@@ -345,3 +345,9 @@ main{width:min(100%,var(--content-width));padding-inline:clamp(18px,4vw,52px)}
 #friendInviteSetup .game-invite-panel{margin-top:22px}
 #friendsButton{cursor:pointer}
 @media(max-width:560px){.no-online-friends{align-items:stretch}.no-online-friends button{width:100%}}
+
+/* Friendly username editor and case-neutral username inputs */
+.friends-search-row input{text-transform:none!important;letter-spacing:1px!important}
+.username-edit-row{margin:12px 0 4px;padding:12px;border:1px solid #ffffff16;border-radius:10px;background:#ffffff05}
+.username-edit-row .friends-search-label{margin-top:0}
+.username-edit-row>small{display:block;margin-top:7px;color:var(--muted);font-size:9px;line-height:1.5}

@@ -21,7 +21,7 @@ const firebaseConfigured = !Object.values(firebaseConfig).some(value => value.in
 let db=null,auth=null,userId=null,firebaseReady=false,playerName="Guest";
 const googleProvider=new GoogleAuthProvider();
 if(firebaseConfigured){try{const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);firebaseReady=true;onAuthStateChanged(auth,user=>{userId=user?.uid||null;playerName=user?.displayName?.trim().slice(0,16)||"Guest";updateProfileUI();});}catch(error){console.error("Firebase setup error:",error);}}
-async function requireGoogleSignIn(){if(!firebaseReady||!auth)throw Error("Online play is not configured yet.");if(auth.currentUser)return auth.currentUser;try{return(await signInWithPopup(auth,googleProvider)).user;}catch(error){if(error.code==="auth/popup-closed-by-user")throw Error("Sign-in was cancelled.");if(error.code==="auth/unauthorized-domain")throw Error("This website domain is not authorized in Firebase Authentication.");throw error;}}
+async function requireGoogleSignIn(){if(!firebaseReady||!auth)throw Error("Online play is not configured yet.");let user=auth.currentUser;if(!user){try{user=(await signInWithPopup(auth,googleProvider)).user;}catch(error){if(error.code==="auth/popup-closed-by-user")throw Error("Sign-in was cancelled.");if(error.code==="auth/unauthorized-domain")throw Error("This website domain is not authorized in Firebase Authentication.");throw error;}}userId=user.uid;playerName=user.displayName?.trim().slice(0,16)||"Guest";updateProfileUI();return user;}
 window.arcadeHubRequireGoogleSignIn=requireGoogleSignIn;
 
 const $ = id => document.getElementById(id);
@@ -47,7 +47,6 @@ let toastTimer, aiTimer, isApplyingRemote = false;
 
 
 function updateProfileUI(){const user=auth?.currentUser;playerName=user?.displayName?.trim().slice(0,16)||"Guest";$("profileButtonName").textContent=user?playerName:"Sign in";$("profileAvatar").textContent=user?playerName.charAt(0).toUpperCase():"?";$("profileLargeAvatar").textContent=user?playerName.charAt(0).toUpperCase():"?";$("profileAccountStatus").textContent=user?"Signed in with Google":"Playing as a guest";$("googleSignInButton").hidden=!!user;$("signOutButton").hidden=!user;$("playerName").value=playerName;}
-$("welcomeOverlay").hidden=true;
 $("profileButton").addEventListener("click",()=>{updateProfileUI();$("profileOverlay").hidden=false;});
 $("closeProfileButton").addEventListener("click",()=>$("profileOverlay").hidden=true);
 $("profileOverlay").addEventListener("click",e=>{if(e.target===$("profileOverlay"))$("profileOverlay").hidden=true;});
@@ -474,7 +473,7 @@ async function createRoom() {
 
 
 async function joinRoom(code) {
-  if (!ensureOnlineReady()) return;
+  if (!(await ensureOnlineReady())) return;
 
   if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) {
     showToast("Enter a valid six-character room code.");

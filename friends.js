@@ -173,16 +173,20 @@ function watchGlobalArrivals(path,type){
   if(type==="friend")seenFriendRequests=data;else seenGameInvites=data;
  },error=>say(error.message||"Could not check new notifications."));
 }
-\nfunction listenSocial(){
+
+function listenSocial(){
  stopListeners();
  const add=(path,cb)=>unsubs.push(onValue(ref(db,path),snap=>cb(snap.val()||{}),e=>say(e.message||"Could not load social data.")));
  add("friends/"+user.uid,data=>{friends=data;Object.keys(friends).forEach(uid=>{if(!presenceWatchers[uid]){const off=onValue(ref(db,"presence/"+uid),snap=>{presence[uid]=snap.val()||{};renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});presenceWatchers[uid]=off;unsubs.push(off);}});renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});
  add("friendRequests/"+user.uid,data=>{requests=data;renderInbox();});
- add("gameInvites/"+user.uid,data=>{invites=data;renderInbox();});\n seenFriendRequests=null;seenGameInvites=null;\n unsubs.push(watchGlobalArrivals("friendRequests/"+user.uid,"friend"));\n unsubs.push(watchGlobalArrivals("gameInvites/"+user.uid,"invite"));
+ add("gameInvites/"+user.uid,data=>{invites=data;renderInbox();});
+ seenFriendRequests=null;seenGameInvites=null;
+ unsubs.push(watchGlobalArrivals("friendRequests/"+user.uid,"friend"));
+ unsubs.push(watchGlobalArrivals("gameInvites/"+user.uid,"invite"));
 
 }
 function listenAccepted(){
- unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{const data=snap.val()||{};Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});}));
+ unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{const data=snap.val()||{};Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){$("friendsOverlay").hidden=true;launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});}));
 }
 function acceptAndClear(id){return acceptInvite(id);}
 function showTab(tab){["friends","search","inbox"].forEach(name=>{$("friends"+(name==="friends"?"List":name==="search"?"Search":"Inbox")+"Panel").hidden=name!==tab;});document.querySelectorAll(".friends-tab").forEach(b=>b.classList.toggle("active",b.dataset.friendsTab===tab));}

@@ -69,11 +69,8 @@ async function searchPlayer(){
   if(!incoming)$("sendFriendRequest").onclick=async()=>{try{await set(ref(db,"friendRequests/"+p.uid+"/"+user.uid),{uid:user.uid,name:user.displayName||"Player",friendCode,createdAt:Date.now()});say("Friend request sent!");$("sendFriendRequest").disabled=true;$("sendFriendRequest").textContent="Sent";}catch(e){say(e.message||"Could not send request.");}};
  }catch(e){say(e.message||"Player search failed. Check database permissions.");}
 }
-async function sendInvite(uid){
- const game=prompt("Which game? Enter tic tac toe or memory.","tic tac toe");
- if(!game)return;
- const normalized=game.trim().toLowerCase(),type=normalized.includes("memory")?"memory":normalized.includes("tic")?"tictactoe":null;
- if(!type){say("Choose Tic Tac Toe or Memory Match.");return;}
+async function sendInvite(uid,type){
+ if(!["memory","tictactoe"].includes(type)){say("Choose one of the available multiplayer games.");return;}
  try{
   const target=await get(ref(db,"friends/"+user.uid+"/"+uid));if(!target.exists())throw Error("That player is not in your friend list.");
   const inviteRef=push(ref(db,"gameInvites/"+uid));
@@ -102,7 +99,7 @@ function launch(game,code,mark){
 function listenAccepted(){
  unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{
   const data=snap.val()||{};
-  Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode)launch(v.game,v.roomCode,"O");});
+  Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});
  }));
 }
 function showTab(tab){

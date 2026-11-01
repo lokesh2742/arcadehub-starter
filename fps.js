@@ -40,7 +40,7 @@ $('pauseGame').onclick=pause;$('resumeGame').onclick=pause;$('quitGame').onclick
 document.addEventListener('pointerlockchange',()=>locked=document.pointerLockElement===renderer.domElement);
 document.addEventListener('mousemove',e=>{if(locked&&started&&!paused){camera.rotation.y-=e.movementX*.0022;camera.rotation.x=THREE.MathUtils.clamp(camera.rotation.x-e.movementY*.0022,-1.4,1.4);}});
 renderer.domElement.addEventListener('click',()=>{if(started&&!paused&&innerWidth>800&&!locked)renderer.domElement.requestPointerLock?.();});
-document.addEventListener('mousedown',e=>{if(e.button===0&&locked)shoot();});
+document.addEventListener('mousedown',e=>{if(e.button===0&&locked){fireHeld=true;shoot();}});document.addEventListener('mouseup',e=>{if(e.button===0)fireHeld=false;});
 document.addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Escape'&&started){pause();}if(e.code==='Space'&&ground&&!paused){vy=7;ground=false;}if(e.code==='KeyR')reload();if(/^Digit[1-6]$/.test(e.code))choose(+e.code.slice(-1)-1);if(e.code==='Tab'&&started){e.preventDefault();$('pausePanel').hidden=false;$('pausePanel').querySelector('small').textContent='SCOREBOARD  ·  YOU '+score+'  /  BOTS '+bots.filter(b=>b.alive).length;setTimeout(()=>{if(!paused)$('pausePanel').hidden=true;},1300);}});
 document.addEventListener('keyup',e=>keys[e.code]=false);
 $('reload').onclick=reload;if($('reload2'))$('reload2').onclick=reload;document.querySelectorAll('[data-gun]').forEach(b=>b.onclick=()=>choose(+b.dataset.gun));

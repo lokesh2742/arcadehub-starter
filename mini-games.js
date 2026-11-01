@@ -130,12 +130,27 @@ function renderOnlineMemory(data){
  const winner=scores.X===scores.O?null:(scores.X>scores.O?"X":"O");
  const resultTitle=winner?(winner==="X"?xName:oName)+" wins!":"It's a draw!";
  const resultCopy=winner?"Congratulations on the win!": "Both players finished with the same score.";
- $("miniGameBody").innerHTML='<div class="memory-online-top"><div class="memory-player '+(data.turn==="X"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+xName+'</b><strong>'+scores.X+'</strong></div><div class="memory-turn">'+(finished?"ROUND COMPLETE":(mine?"YOUR TURN":"OPPONENT’S TURN"))+'</div><div class="memory-player '+(data.turn==="O"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+oName+'</b><strong>'+scores.O+'</strong></div></div><div class="memory-room-strip">ROOM <b>'+(memoryRoomRef.key||"")+'</b> · '+(data.moves||0)+' turns</div><div class="mini-board memory-board">'+data.deck.map((v,i)=>{const shown=(data.picks||[]).includes(i)||(data.matched||[]).includes(i);return '<button class="memory-card '+(shown?'revealed ':'')+((data.matched||[]).includes(i)?'matched':'')+'" data-i="'+i+'" '+(shown||finished||data.phase==="resolving"||!mine?'disabled':'')+'>'+(shown?v:"?")+'</button>';}).join("")+'</div>'+(finished?'<div class="game-over-panel memory-result"><div class="win-medal">✦</div><p class="eyebrow">MATCH COMPLETE</p><h3>'+resultTitle+'</h3><p>'+resultCopy+'</p><div class="memory-final-score"><span>'+xName+' <b>'+scores.X+'</b></span><span>'+oName+' <b>'+scores.O+'</b></span></div><button class="primary-button" id="memoryNewRoom">Play again ↻</button><button class="secondary-button" id="memoryExitRoom">Back to games</button></div>':'<p class="game-help">'+(mine?"Find a pair. Matching pairs earn a point and another turn.":"Wait for your opponent to finish their turn.")+'</p>');
+ $("miniGameBody").innerHTML='<div class="memory-online-top"><div class="memory-player '+(data.turn==="X"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+xName+'</b><strong>'+scores.X+'</strong></div><div class="memory-turn">'+(finished?"ROUND COMPLETE":(mine?"YOUR TURN":"OPPONENT’S TURN"))+'</div><div class="memory-player '+(data.turn==="O"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+oName+'</b><strong>'+scores.O+'</strong></div></div><div class="memory-room-strip">ROOM <b>'+(memoryRoomRef.key||"")+'</b> · '+(data.moves||0)+' turns</div><div class="mini-board memory-board">'+data.deck.map((v,i)=>{const shown=(data.picks||[]).includes(i)||(data.matched||[]).includes(i);return '<button class="memory-card '+(shown?'revealed ':'')+((data.matched||[]).includes(i)?'matched':'')+'" data-i="'+i+'" '+(shown||finished||data.phase==="resolving"||!mine?'disabled':'')+'>'+(shown?v:"?")+'</button>';}).join("")+'</div>'+(finished?'<div class="game-over-panel memory-result"><div class="win-medal">✦</div><p class="eyebrow">MATCH COMPLETE</p><h3>'+resultTitle+'</h3><p>'+resultCopy+'</p><div class="memory-final-score"><span>'+xName+' <b>'+scores.X+'</b></span><span>'+oName+' <b>'+scores.O+'</b></span></div><p class="memory-rematch-status">'+((data.rematchRequests||{})[memoryMark]?"You are ready. Waiting for your friend to play again…":"Play again together? Your friend will stay in this match until both players are ready.")+'</p><button class="primary-button" id="memoryNewRoom" '+((data.rematchRequests||{})[memoryMark]?'disabled':'')+'>'+((data.rematchRequests||{})[memoryMark]?"Waiting for friend…":"Play again ↻")+'</button><button class="secondary-button" id="memoryExitRoom">Back to games</button></div>':'<p class="game-help">'+(mine?"Find a pair. Matching pairs earn a point and another turn.":"Wait for your opponent to finish their turn.")+'</p>');
  $("miniGameBody").querySelectorAll(".memory-card").forEach(b=>b.onclick=()=>playOnlineMemory(+b.dataset.i));
  if(finished){
-  $("memoryNewRoom").onclick=()=>{stopRoom();memoryRoomSetup();};
+  $("memoryNewRoom").onclick=requestMemoryRematch;
   $("memoryExitRoom").onclick=()=>{stopRoom();memoryMenu();};
  }
+}
+async function requestMemoryRematch(){
+ if(!memoryRoomRef||!memoryRoom||memoryRoom.status!=="finished")return;
+ try{
+  const nextDeck=shuffledDeck();
+  const result=await runTransaction(memoryRoomRef,room=>{
+   if(!room||room.status!=="finished"||room.players?.[memoryMark]?.id!==memoryUserId)return;
+   const requests={X:false,O:false,...(room.rematchRequests||{})};
+   if(requests[memoryMark])return room;
+   requests[memoryMark]=true;
+   if(requests.X&&requests.O)return {...room,status:"playing",deck:nextDeck,matched:[],picks:[],turn:"X",scores:{X:0,O:0},moves:0,phase:"ready",round:(room.round||1)+1,rematchRequests:{X:false,O:false}};
+   return {...room,rematchRequests:requests};
+  });
+  if(!result.committed)console.warn("[ArcadeHub] Memory Match rematch request was not committed.");
+ }catch(error){console.error("[ArcadeHub] Memory Match rematch request failed:",error);}
 }
 async function playOnlineMemory(index){
  if(!memoryRoomRef||!memoryRoom||memoryRoom.status!=="playing")return;
@@ -179,7 +194,7 @@ async function resolveMemoryPair(){
    const nextTurn=isMatch?current.turn:(current.turn==="X"?"O":"X");
    const next={...current,scores,picks:[],matched:nextMatched,phase:"ready",turn:nextTurn};
    if(isMatch)scores[current.turn]=(Number(scores[current.turn])||0)+1;
-   if(nextMatched.length===deck.length)next.status="finished";
+   if(nextMatched.length===deck.length){next.status="finished";next.rematchRequests={X:false,O:false};}
    return next;
   });
  }catch(error){

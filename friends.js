@@ -101,7 +101,7 @@ async function acceptFriend(uid){
   const snap=await get(ref(db,"friendRequests/"+user.uid+"/"+uid));if(!snap.exists())return;
   const request=snap.val(),me={uid:user.uid,name:user.displayName||"Player",username};
   const updates={};updates["friends/"+user.uid+"/"+uid]={uid,name:request.name||"Player",username:request.username||""};updates["friends/"+uid+"/"+user.uid]=me;updates["friendRequests/"+user.uid+"/"+uid]=null;
-  await update(ref(db),updates);say("Friend added!");
+  await update(ref(db),updates);say("Friend added!");dismissGlobalNotice("friend:"+uid);
  }catch(e){say(e.message||"Could not accept request. Check Firebase database rules.");}
 }
 async function searchPlayer(){
@@ -138,20 +138,55 @@ async function acceptInvite(id){
   if(!made.committed)throw Error("Could not prepare the game room. Please try again.");
   await update(ref(db,"gameInvites/"+user.uid+"/"+id),{status:"accepted",roomCode:code,acceptedBy:user.uid});
   await set(ref(db,"gameInvites/"+invite.fromUid+"/accepted_"+id),{...invite,status:"accepted",roomCode:code,acceptedBy:user.uid,acceptedAt:Date.now()});
-  launch(invite.game,code,"X");
+  $("friendsOverlay").hidden=true;dismissGlobalNotice("invite:"+id);launch(invite.game,code,"X");
  }catch(e){say(e.message||"Could not start the invited game.");}
 }
 function launch(game,code,mark){const key=game+":"+code;if(launched[key])return;launched[key]=true;if(game==="memory")window.arcadeHubStartInvitedMemory?.(code,mark);else window.arcadeHubStartInvitedTicTacToe?.(code,mark);}
+
+let globalNoticeItems=[],seenFriendRequests=null,seenGameInvites=null;
+function ensureGlobalNoticeHost(){
+ let host=$("globalSocialNotices");if(host)return host;
+ host=document.createElement("aside");host.id="globalSocialNotices";host.className="global-social-notices";host.setAttribute("aria-live","polite");host.setAttribute("aria-label","New friend activity");document.body.appendChild(host);return host;
+}
+function dismissGlobalNotice(key){globalNoticeItems=globalNoticeItems.filter(item=>item.key!==key);renderGlobalNotices();}
+function renderGlobalNotices(){
+ const host=ensureGlobalNoticeHost();
+ host.innerHTML=globalNoticeItems.map(item=>'<article class="global-social-notice"><button class="global-notice-close" type="button" data-dismiss="'+esc(item.key)+'" aria-label="Dismiss">×</button><span class="global-notice-icon">'+(item.type==="invite"?"🎮":"👋")+'</span><div class="global-notice-copy"><b>'+(item.type==="invite"?"Game invitation":"Friend request")+'</b><p>'+esc(item.message)+'</p></div><button class="primary-button global-notice-action" type="button" data-action="'+esc(item.key)+'">'+(item.type==="invite"?"Play now":"Accept")+'</button></article>').join("");
+ host.querySelectorAll("[data-dismiss]").forEach(button=>button.onclick=()=>dismissGlobalNotice(button.dataset.dismiss));
+ host.querySelectorAll("[data-action]").forEach(button=>button.onclick=async()=>{
+  const item=globalNoticeItems.find(entry=>entry.key===button.dataset.action);if(!item)return;
+  button.disabled=true;
+  if(item.type==="friend"){await acceptFriend(item.uid);dismissGlobalNotice(item.key);}
+  else await acceptInvite(item.id);
+ });
+}
+function addGlobalNotice(item){if(globalNoticeItems.some(entry=>entry.key===item.key))return;globalNoticeItems.push(item);renderGlobalNotices();}
+function watchGlobalArrivals(path,type){
+ return onValue(ref(db,path),snap=>{
+  const data=snap.val()||{},previous=type==="friend"?seenFriendRequests:seenGameInvites;
+  if(previous!==null){
+   Object.entries(data).forEach(([id,value])=>{
+    if(type==="friend"&&!previous[id]&&value)addGlobalNotice({key:"friend:"+id,type:"friend",uid:id,message:(value.name||"Someone")+" sent you a friend request."});
+    if(type==="invite"&&!previous[id]&&value?.status==="pending")addGlobalNotice({key:"invite:"+id,type:"invite",id,message:(value.fromName||"A friend")+" invited you to play "+(value.game==="memory"?"Memory Match":"Tic Tac Toe")+"."});
+   });
+  }
+  if(type==="friend")seenFriendRequests=data;else seenGameInvites=data;
+ },error=>say(error.message||"Could not check new notifications."));
+}
+
 function listenSocial(){
  stopListeners();
  const add=(path,cb)=>unsubs.push(onValue(ref(db,path),snap=>cb(snap.val()||{}),e=>say(e.message||"Could not load social data.")));
  add("friends/"+user.uid,data=>{friends=data;Object.keys(friends).forEach(uid=>{if(!presenceWatchers[uid]){const off=onValue(ref(db,"presence/"+uid),snap=>{presence[uid]=snap.val()||{};renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});presenceWatchers[uid]=off;unsubs.push(off);}});renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});
  add("friendRequests/"+user.uid,data=>{requests=data;renderInbox();});
  add("gameInvites/"+user.uid,data=>{invites=data;renderInbox();});
+ seenFriendRequests=null;seenGameInvites=null;
+ unsubs.push(watchGlobalArrivals("friendRequests/"+user.uid,"friend"));
+ unsubs.push(watchGlobalArrivals("gameInvites/"+user.uid,"invite"));
 
 }
 function listenAccepted(){
- unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{const data=snap.val()||{};Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});}));
+ unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{const data=snap.val()||{};Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){$("friendsOverlay").hidden=true;launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});}));
 }
 function acceptAndClear(id){return acceptInvite(id);}
 function showTab(tab){["friends","search","inbox"].forEach(name=>{$("friends"+(name==="friends"?"List":name==="search"?"Search":"Inbox")+"Panel").hidden=name!==tab;});document.querySelectorAll(".friends-tab").forEach(b=>b.classList.toggle("active",b.dataset.friendsTab===tab));}
@@ -167,7 +202,7 @@ $("friendSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter")searchP
 $("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is "+username);}});
 onAuthStateChanged(auth,async u=>{
  if(user?.uid&&!u)update(ref(db,"presence/"+user.uid),{state:"offline",lastChanged:Date.now()}).catch(()=>{});
- user=u;stopListeners();username="";friends={};requests={};invites={};presence={};
+ user=u;stopListeners();globalNoticeItems=[];renderGlobalNotices();seenFriendRequests=null;seenGameInvites=null;username="";friends={};requests={};invites={};presence={};
  $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}
  try{await ensureProfile(u);$("myFriendCode").textContent=username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}

@@ -6,13 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#10111b" />
   <title>ArcadeHub — Play Together</title>
-  <link rel="stylesheet" href="style.css?v=arcadehub-2" />
+  <link rel="stylesheet" href="style.css?v=arcadehub-3" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#" id="homeLink"><span class="brand-mark">A</span><span>arcade<span class="brand-accent">hub</span></span></a>
     <nav><a class="nav-link active" href="#discover">Discover</a><a class="nav-link" href="#library">All games</a></nav>
-    <span class="ready-label"><i></i> Ready to play</span>
+    <button class="profile-trigger" id="profileButton" type="button"><span class="profile-avatar" id="profileAvatar">?</span><span id="profileButtonName">Profile</span><span class="profile-chevron">⌄</span></button>
   </header>
 
   <main>
@@ -37,11 +37,11 @@
           <button class="filter-chip" data-filter="single">Single player</button>
           <button class="filter-chip" data-filter="multi">Multiplayer</button>
         </div>
-        <span class="results-label" id="resultsLabel">Showing 6 games</span>
+        <span class="results-label" id="resultsLabel">Showing 9 games</span>
       </div>
       <div class="game-grid" id="gameGrid">
         <button class="game-card" data-name="tic tac toe" data-type="single multi" data-game="tictactoe"><div class="game-art tic-art"><span class="symbol-x">×</span><span class="symbol-o">○</span><span class="art-tag">FEATURED</span></div><div class="game-info"><div><h3>Tic Tac Toe</h3><p>Quick strategy · 1–2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>VS AI</span><span>LOCAL</span><span>ONLINE</span></div></button>
-        <button class="game-card" data-name="memory match" data-type="single" data-game="memory"><div class="game-art memory-art"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><div class="game-info"><div><h3>Memory Match</h3><p>Find matching pairs · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>PLAY NOW</span></div></button>
+        <button class="game-card" data-name="memory match" data-type="single multi" data-game="memory"><div class="game-art memory-art"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><div class="game-info"><div><h3>Memory Match</h3><p>Find pairs · Solo or online duel</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SOLO</span><span>ONLINE ROOM</span></div></button>
         <button class="game-card" data-name="snake" data-type="single" data-game="snake"><div class="game-art snake-art"><span>🐍</span><b>SNAKE</b></div><div class="game-info"><div><h3>Snake</h3><p>Eat, grow and survive</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>ARCADE</span></div></button>
         <button class="game-card" data-name="2048" data-type="single" data-game="2048"><div class="game-art tiles-art"><b>2048</b><span>2&nbsp; 4&nbsp; 8&nbsp; 16</span></div><div class="game-info"><div><h3>2048</h3><p>Merge tiles to reach 2048</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>PUZZLE</span></div></button>
         <button class="game-card" data-name="block puzzle" data-type="single" data-game="blocks"><div class="game-art blocks-art"><span>🟪 🟦 🟪<br>🟦 🟪 🟦</span></div><div class="game-info"><div><h3>Block Puzzle</h3><p>Fill rows and columns</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>PUZZLE</span></div></button>
@@ -127,9 +127,27 @@
     <div class="result-overlay" id="onlineResultModal" hidden><div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="resultTitle"><div class="result-confetti">✦</div><p class="eyebrow">ROUND COMPLETE</p><h2 id="resultTitle">Winner!</h2><p id="resultMessage">Great game.</p><div class="result-actions"><button class="secondary-button" id="exitToMenuButton">Exit to main menu</button><button class="primary-button" id="newMatchButton">New match ↻</button></div><p class="rematch-note" id="rematchNote">Both players need to choose New Match.</p></div></div>
   </section>
   <section class="mini-game-screen" id="miniGameScreen" hidden><div class="mini-game-top"><button class="secondary-button" id="miniGameBack">← All games</button><h2 id="miniGameTitle">Game</h2><button class="secondary-button" id="miniGameRestart">Restart ↻</button></div><div class="mini-game-body" id="miniGameBody"></div></section>
+  
+  <div class="welcome-overlay" id="welcomeOverlay">
+    <form class="welcome-dialog" id="welcomeForm">
+      <div class="welcome-logo">A</div><p class="eyebrow">WELCOME TO ARCADEHUB</p>
+      <h2>First, what should we call you?</h2><p class="muted">Your name appears on your player profile and in multiplayer rooms.</p>
+      <label for="welcomeNameInput">YOUR PLAYER NAME</label><input id="welcomeNameInput" maxlength="16" required autocomplete="nickname" placeholder="Enter your name"/>
+      <button class="primary-button full-button" type="submit">Let's play <span>→</span></button>
+    </form>
+  </div>
+  <div class="profile-overlay" id="profileOverlay" hidden>
+    <form class="profile-dialog" id="profileForm">
+      <button class="profile-close" id="closeProfileButton" type="button" aria-label="Close">×</button>
+      <div class="profile-avatar large" id="profileLargeAvatar">?</div><p class="eyebrow">YOUR PLAYER PROFILE</p><h2>Player profile</h2>
+      <label for="profileNameInput">DISPLAY NAME</label><input id="profileNameInput" maxlength="16" required/>
+      <p class="profile-device-note">Your profile is saved on this device. You can change your name whenever you like.</p>
+      <button class="primary-button full-button" type="submit">Save changes</button>
+    </form>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="script.js?v=arcadehub-2"></script>
-  <script type="module" src="mini-games.js?v=arcadehub-2"></script>
+  <script type="module" src="script.js?v=arcadehub-3"></script>
+  <script type="module" src="mini-games.js?v=arcadehub-3"></script>
 </body>
 </html>

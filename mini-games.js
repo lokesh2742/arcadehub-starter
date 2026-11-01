@@ -1,13 +1,149 @@
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getDatabase, ref, get, runTransaction, onValue, update } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 const $ = id => document.getElementById(id);
-let timer = null, cleanup = null, active = "";
-function closeGame(){clearInterval(timer);clearTimeout(timer);timer=null;if(cleanup){cleanup();cleanup=null;}$("miniGameScreen").hidden=true;active="";}
-function openGame(name){closeGame();active=name;$("miniGameScreen").hidden=false;$("miniGameTitle").textContent=({memory:"Memory Match",snake:"Snake","2048":"2048",blocks:"Block Puzzle",racer:"Neon Racer"})[name];if(name==="memory")memory();if(name==="snake")snake();if(name==="2048")game2048();if(name==="blocks")blocks();if(name==="racer")racer();}
+let timer=null, cleanup=null, active="", memoryRoomRef=null, memoryRoomOff=null, memoryRoom=null, memoryMark="", memoryUserId=null, resolveTimer=null;
+const firebaseConfig = {
+  apiKey: "AIzaSyDAFaBhBwHvWkxkU7KH8n-IsGICwFzYUl4",
+  authDomain: "arcadehub-3f060.firebaseapp.com",
+  databaseURL: "https://arcadehub-3f060-default-rtdb.firebaseio.com",
+  projectId: "arcadehub-3f060",
+  storageBucket: "arcadehub-3f060.firebasestorage.app",
+  messagingSenderId: "777660361833",
+  appId: "1:777660361833:web:623f0ce7d78a4733ac46f8",
+  measurementId: "G-Q1GX1EEMWX"
+};
+let miniDb=null, miniAuthReady=false;
+try{const app=getApps().find(a=>a.name==="ArcadeHubMini")||initializeApp(firebaseConfig,"ArcadeHubMini");const auth=getAuth(app);miniDb=getDatabase(app);await signInAnonymously(auth);memoryUserId=auth.currentUser.uid;miniAuthReady=true;}catch(e){console.warn("Online Memory Match unavailable:",e);}
+const player=()=>{try{return localStorage.getItem("arcadehubPlayerName")||"Player";}catch{return"Player";}};
+function stopRoom(){if(memoryRoomOff){memoryRoomOff();memoryRoomOff=null;}memoryRoomRef=null;memoryRoom=null;memoryMark="";clearTimeout(resolveTimer);}
+function closeGame(){clearInterval(timer);clearTimeout(timer);timer=null;if(cleanup){cleanup();cleanup=null;}stopRoom();$("miniGameScreen").hidden=true;active="";}
+function openGame(name){closeGame();active=name;$("miniGameScreen").hidden=false;$("miniGameTitle").textContent=({memory:"Memory Match",snake:"Snake","2048":"2048",blocks:"Block Puzzle",racer:"Neon Racer"})[name];if(name==="memory")memoryMenu();if(name==="snake")snake();if(name==="2048")game2048();if(name==="blocks")blocks();if(name==="racer")racer();}
 $("miniGameBack").addEventListener("click",closeGame);
 $("miniGameRestart").addEventListener("click",()=>openGame(active));
 document.querySelectorAll(".game-card[data-game='upcoming']").forEach(b=>b.addEventListener("click",()=>alert("This multiplayer game is coming soon!")));
 document.querySelectorAll(".game-card[data-game='memory'],.game-card[data-game='snake'],.game-card[data-game='2048'],.game-card[data-game='blocks'],.game-card[data-game='racer']").forEach(b=>b.addEventListener("click",()=>openGame(b.dataset.game)));
-function memory(){const icons=["◆","●","▲","★","♥","☀","☂","✿"],deck=[...icons,...icons].sort(()=>Math.random()-.5),open=[],matched=[];let moves=0,lock=false;function draw(){$("miniGameBody").innerHTML='<p class="mini-score">Moves: '+moves+' · Pairs: '+matched.length/2+'/8</p><div class="mini-board memory-board">'+deck.map((v,i)=>'<button class="memory-card" data-i="'+i+'">'+(open.includes(i)||matched.includes(i)?v:"?")+'</button>').join("")+'</div>';document.querySelectorAll(".memory-card").forEach(b=>b.onclick=()=>{let i=+b.dataset.i;if(lock||open.includes(i)||matched.includes(i))return;open.push(i);if(open.length===2){moves++;lock=true;draw();let [a,c]=open;if(deck[a]===deck[c]){matched.push(a,c);open.length=0;lock=false;draw();if(matched.length===16)alert("You matched all pairs!");}else timer=setTimeout(()=>{open.length=0;lock=false;draw();},650);}else draw();});}draw();}
-function game2048(){let g=Array(16).fill(0),score=0;function add(){let e=g.map((v,i)=>v?null:i).filter(v=>v!==null);if(e.length)g[e[Math.floor(Math.random()*e.length)]]=2;}add();add();function draw(){$("miniGameBody").innerHTML='<p class="mini-score">Score: '+score+'</p><div class="mini-board tile-board">'+g.map(v=>'<div class="tile" data-value="'+v+'">'+(v||"")+'</div>').join("")+'</div><p class="game-help">Use arrow keys to merge equal tiles.</p>';}function move(d){let old=g.join();for(let n=0;n<4;n++){let ids=d==="left"?[0,1,2,3].map(k=>n*4+k):d==="right"?[3,2,1,0].map(k=>n*4+k):d==="up"?[0,1,2,3].map(k=>k*4+n):[3,2,1,0].map(k=>k*4+n),v=ids.map(i=>g[i]).filter(Boolean),o=[];for(let k=0;k<v.length;k++){if(v[k]===v[k+1]){o.push(v[k]*2);score+=v[k]*2;k++;}else o.push(v[k]);}while(o.length<4)o.push(0);ids.forEach((id,k)=>g[id]=o[k]);}if(old!==g.join())add();draw();}let key=e=>{let d=({ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down"})[e.key];if(d&&active==="2048"){e.preventDefault();move(d);}};window.addEventListener("keydown",key);cleanup=()=>window.removeEventListener("keydown",key);draw();}
-function snake(){ $("miniGameBody").innerHTML='<p class="mini-score">Score: <span id="snakeScore">0</span></p><canvas class="game-canvas" id="snakeCanvas" width="360" height="360"></canvas><p class="game-help">Arrow keys to steer. Avoid walls and your tail.</p>';let c=$("snakeCanvas"),x=c.getContext("2d"),body=[{x:8,y:8},{x:7,y:8}],d={x:1,y:0},food={x:13,y:8},score=0,dead=false;let key=e=>{let n=({ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0}})[e.key];if(n&&active==="snake"&&(n.x!==-d.x||n.y!==-d.y)){d=n;e.preventDefault();}};window.addEventListener("keydown",key);cleanup=()=>window.removeEventListener("keydown",key);function draw(){x.fillStyle="#171a29";x.fillRect(0,0,360,360);x.fillStyle="#ff91c3";x.fillRect(food.x*18,food.y*18,16,16);x.fillStyle="#8ef0c0";body.forEach(p=>x.fillRect(p.x*18,p.y*18,16,16));}timer=setInterval(()=>{let h={x:body[0].x+d.x,y:body[0].y+d.y};if(h.x<0||h.y<0||h.x>=20||h.y>=20||body.some(p=>p.x===h.x&&p.y===h.y)){clearInterval(timer);alert("Game over! Score: "+score);return;}body.unshift(h);if(h.x===food.x&&h.y===food.y){score++;$("snakeScore").textContent=score;food={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)};}else body.pop();draw();},130);draw();}
-function blocks(){let g=Array(100).fill(false),score=0;function draw(){$("miniGameBody").innerHTML='<p class="mini-score">Lines cleared: '+score+'</p><div class="mini-board block-grid">'+g.map((v,i)=>'<button class="block-cell" data-i="'+i+'" style="background:'+(v?'#a78bfa':'#29243d')+'"></button>').join("")+'</div><p class="game-help">Tap cells. Complete a full row or column to clear it.</p>';document.querySelectorAll(".block-cell").forEach(b=>b.onclick=()=>{let i=+b.dataset.i;if(g[i])return;g[i]=true;let r=Math.floor(i/10),c=i%10,clear=[];if(g.slice(r*10,r*10+10).every(Boolean))for(let k=0;k<10;k++)clear.push(r*10+k);if(Array.from({length:10},(_,k)=>g[k*10+c]).every(Boolean))for(let k=0;k<10;k++)clear.push(k*10+c);[...new Set(clear)].forEach(k=>g[k]=false);if(clear.length)score++;if(g.every(Boolean)){alert("Board full!");g.fill(false);}draw();});}draw();}
-function racer(){ $("miniGameBody").innerHTML='<p class="mini-score">Distance: <span id="raceScore">0</span></p><canvas class="game-canvas" id="raceCanvas" width="300" height="420"></canvas><p class="game-help">Arrow keys or tap a lane to dodge cars.</p>';let c=$("raceCanvas"),x=c.getContext("2d"),lane=1,obs=[],ticks=0,score=0;let key=e=>{if(active!=="racer")return;if(e.key==="ArrowLeft")lane=Math.max(0,lane-1);if(e.key==="ArrowRight")lane=Math.min(2,lane+1);};window.addEventListener("keydown",key);cleanup=()=>window.removeEventListener("keydown",key);c.onclick=e=>{let r=c.getBoundingClientRect();lane=Math.max(0,Math.min(2,Math.floor((e.clientX-r.left)/r.width*3)));};timer=setInterval(()=>{ticks++;if(ticks%25===0)obs.push({lane:Math.floor(Math.random()*3),y:-50});obs.forEach(o=>o.y+=5);obs=obs.filter(o=>o.y<430);if(obs.some(o=>o.lane===lane&&o.y>305&&o.y<405)){clearInterval(timer);alert("Crash! Distance: "+score);return;}if(ticks%6===0){score++;$("raceScore").textContent=score;}x.fillStyle="#242438";x.fillRect(0,0,300,420);x.fillStyle="#55556a";x.fillRect(35,0,230,420);x.fillStyle="#8ef0c0";x.fillRect(48+lane*77,350,38,55);x.fillStyle="#ff91c3";obs.forEach(o=>x.fillRect(48+o.lane*77,o.y,38,50));},40);}
+
+function memoryMenu(){
+ $("miniGameBody").innerHTML='<div class="memory-welcome"><div class="memory-hero-icons"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><p class="eyebrow">TEST YOUR MEMORY</p><h2>Match the pairs.</h2><p class="game-help">Play solo or challenge a friend in a private room. In online mode, players take turns and earn points for every pair they find.</p><div class="memory-mode-grid"><button class="memory-mode-card" id="memorySolo"><span>🧠</span><b>Solo challenge</b><small>Beat your best score</small></button><button class="memory-mode-card" id="memoryOnline"><span>🌐</span><b>Custom room</b><small>Play with a friend online</small></button></div></div>';
+ $("memorySolo").onclick=()=>memorySolo();
+ $("memoryOnline").onclick=()=>memoryRoomSetup();
+}
+function shuffledDeck(){const a=["◆","●","▲","★","♥","☀","☂","✿"];return [...a,...a].sort(()=>Math.random()-.5);}
+function memorySolo(){
+ const deck=shuffledDeck(),opened=[],matched=[];let moves=0,lock=false,started=Date.now();
+ function hasPlacement(shape){for(let r=0;r<10;r++)for(let c=0;c<10;c++)if(canPlace(shape,r,c))return true;return false;}
+ function draw(){
+  $("miniGameBody").innerHTML='<div class="memory-hud"><span>Moves <b>'+moves+'</b></span><span>Pairs <b>'+matched.length/2+'/8</b></span><span>Time <b>'+Math.floor((Date.now()-started)/1000)+'s</b></span></div><div class="mini-board memory-board">'+deck.map((v,i)=>'<button class="memory-card '+(opened.includes(i)||matched.includes(i)?'revealed ':'')+(matched.includes(i)?'matched':'')+'" data-i="'+i+'" aria-label="Memory card">'+(opened.includes(i)||matched.includes(i)?v:"?")+'</button>').join("")+'</div><p class="game-help">Find all eight pairs in as few moves as possible.</p>';
+  $("miniGameBody").querySelectorAll(".memory-card").forEach(b=>b.onclick=()=>{
+   const i=+b.dataset.i;if(lock||opened.includes(i)||matched.includes(i))return;
+   opened.push(i);if(opened.length===2){moves++;lock=true;draw();const [a,c]=opened;if(deck[a]===deck[c]){matched.push(a,c);opened.length=0;lock=false;draw();if(matched.length===16)memoryWin();}else timer=setTimeout(()=>{opened.length=0;lock=false;draw();},780);}else draw();
+  });
+ }
+ function memoryWin(){const seconds=Math.floor((Date.now()-started)/1000);$("miniGameBody").innerHTML='<div class="memory-win"><div class="win-medal">✦</div><p class="eyebrow">PERFECT MATCH</p><h2>You did it!</h2><p>You found every pair in <b>'+moves+'</b> moves and <b>'+seconds+'</b> seconds.</p><button class="primary-button" id="memoryAgain">Play again ↻</button></div>';$("memoryAgain").onclick=()=>memorySolo();}
+ draw();
+}
+
+function memoryRoomSetup(){
+ $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">PRIVATE MULTIPLAYER</p><h2>Play with a friend.</h2><p class="game-help">Create a room and share its six-character code, or join a friend's room.</p><button class="primary-button full-button" id="memoryCreateRoom">Create custom room</button><div class="room-code-entry"><input id="memoryJoinCode" maxlength="6" placeholder="ENTER ROOM CODE" autocomplete="off"/><button class="secondary-button" id="memoryJoinRoom">Join room</button></div><p class="game-help" id="memoryRoomStatus"></p></div>';
+ $("memoryCreateRoom").onclick=createMemoryRoom;
+ $("memoryJoinRoom").onclick=()=>joinMemoryRoom($("memoryJoinCode").value.trim().toUpperCase());
+}
+function makeRoomCode(){const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);return [...bytes].map(b=>chars[b%chars.length]).join("");}
+async function createMemoryRoom(){
+ if(!miniAuthReady){$("memoryRoomStatus").textContent="Online play is not available right now. Refresh and try again.";return;}
+ $("memoryCreateRoom").disabled=true;
+ try{
+  let code="",ok=false;
+  for(let n=0;n<5&&!ok;n++){code=makeRoomCode();const candidate=ref(miniDb,"rooms/"+code);const r=await runTransaction(candidate,old=>old===null?{type:"memory",status:"waiting",players:{X:{id:memoryUserId,name:player()},O:null},deck:shuffledDeck(),matched:[],picks:[],turn:"X",scores:{X:0,O:0},moves:0}:undefined);if(r.committed){memoryRoomRef=candidate;ok=true;}}
+  if(!ok)throw Error("Could not create a room. Try again.");
+  memoryMark="X";$("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">ROOM CREATED</p><h2>Invite your opponent.</h2><div class="memory-room-code" id="memoryRoomCode">'+code+'</div><button class="secondary-button" id="memoryCopyCode">Copy room code</button><div class="waiting-indicator"><i></i> Waiting for your friend to join…</div><button class="text-button" id="memoryCancelRoom">Cancel room</button></div>';
+  $("memoryCopyCode").onclick=()=>navigator.clipboard?.writeText(code).then(()=>{$("memoryCopyCode").textContent="Copied ✓";}).catch(()=>{});
+  $("memoryCancelRoom").onclick=async()=>{if(memoryRoomRef)await update(memoryRoomRef,{status:"closed"});stopRoom();memoryRoomSetup();};
+  listenMemoryRoom();
+ }catch(e){$("memoryRoomStatus").textContent=e.message||"Could not create room.";$("memoryCreateRoom").disabled=false;}
+}
+async function joinMemoryRoom(code){
+ if(!miniAuthReady){$("memoryRoomStatus").textContent="Online play is not available right now.";return;}
+ if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){$("memoryRoomStatus").textContent="Enter a valid six-character code.";return;}
+ $("memoryJoinRoom").disabled=true;
+ try{
+  const candidate=ref(miniDb,"rooms/"+code),snap=await get(candidate);if(!snap.exists())throw Error("Room not found. Check the code.");
+  const existing=snap.val();if(existing.type!=="memory"||existing.status!=="waiting"||existing.players?.O)throw Error("This room is full or is for another game.");
+  const joined=await runTransaction(candidate,room=>{if(!room||room.type!=="memory"||room.status!=="waiting"||room.players?.O)return;room.players.O={id:memoryUserId,name:player()};room.status="playing";return room;});
+  if(!joined.committed)throw Error("Someone else has already joined this room.");
+  memoryRoomRef=candidate;memoryMark="O";listenMemoryRoom();
+ }catch(e){$("memoryRoomStatus").textContent=e.message||"Could not join room.";$("memoryJoinRoom").disabled=false;}
+}
+function listenMemoryRoom(){
+ if(memoryRoomOff)memoryRoomOff();
+ memoryRoomOff=onValue(memoryRoomRef,snap=>{
+  const data=snap.val();if(!data||data.status==="closed"){stopRoom();memoryRoomSetup();$("miniGameBody").insertAdjacentHTML("afterbegin",'<p class="game-help">This room has been closed.</p>');return;}
+  memoryRoom=data;if(data.status==="waiting"){if(!$("memoryRoomCode")){$("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">ROOM CREATED</p><h2>Invite your opponent.</h2><div class="memory-room-code" id="memoryRoomCode">'+(memoryRoomRef.key||"")+'</div><div class="waiting-indicator"><i></i> Waiting for your friend to join…</div></div>';}return;}
+  renderOnlineMemory(data);
+  if(data.phase==="resolving"&&!resolveTimer){resolveTimer=setTimeout(resolveMemoryPair,850);}
+  if(data.phase!=="resolving"){clearTimeout(resolveTimer);resolveTimer=null;}
+ });
+}
+function renderOnlineMemory(data){
+ const scores=data.scores||{X:0,O:0},mine=memoryMark===data.turn,finished=data.status==="finished";
+ $("miniGameBody").innerHTML='<div class="memory-online-top"><div class="memory-player '+(data.turn==="X"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+(data.players?.X?.name||"Player 1")+'</b><strong>'+scores.X+'</strong></div><div class="memory-turn">'+(finished?"ROUND COMPLETE":(mine?"YOUR TURN":"OPPONENT’S TURN"))+'</div><div class="memory-player '+(data.turn==="O"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+(data.players?.O?.name||"Player 2")+'</b><strong>'+scores.O+'</strong></div></div><div class="memory-room-strip">ROOM <b>'+(memoryRoomRef.key||"")+'</b> · '+(data.moves||0)+' turns</div><div class="mini-board memory-board">'+data.deck.map((v,i)=>{const shown=(data.picks||[]).includes(i)||(data.matched||[]).includes(i);return '<button class="memory-card '+(shown?'revealed ':'')+((data.matched||[]).includes(i)?'matched':'')+'" data-i="'+i+'" '+(shown||finished||data.phase==="resolving"||!mine?'disabled':'')+'>'+(shown?v:"?")+'</button>';}).join("")+'</div><p class="game-help">'+(finished?"The match is complete. Go back to the arcade or start a fresh room.":(mine?"Find a pair. Matching pairs earn a point and another turn.":"Wait for your opponent to finish their turn."))+'</p>'+(finished?'<button class="primary-button" id="memoryNewRoom">New room ↻</button>':'');
+ $("miniGameBody").querySelectorAll(".memory-card").forEach(b=>b.onclick=()=>playOnlineMemory(+b.dataset.i));
+ if(finished)$("memoryNewRoom").onclick=()=>{stopRoom();memoryRoomSetup();};
+}
+async function playOnlineMemory(index){
+ if(!memoryRoomRef||!memoryRoom||memoryRoom.status!=="playing"||memoryRoom.turn!==memoryMark||memoryRoom.phase==="resolving"||(memoryRoom.picks||[]).includes(index)||(memoryRoom.matched||[]).includes(index))return;
+ await runTransaction(memoryRoomRef,room=>{if(!room||room.status!=="playing"||room.turn!==memoryMark||room.phase==="resolving"||(room.picks||[]).includes(index)||(room.matched||[]).includes(index))return;room.picks=room.picks||[];room.picks.push(index);room.moves=(room.moves||0)+1;if(room.picks.length===2)room.phase="resolving";return room;});
+}
+async function resolveMemoryPair(){
+ resolveTimer=null;if(!memoryRoomRef)return;
+ await runTransaction(memoryRoomRef,room=>{
+  if(!room||room.status!=="playing"||room.phase!=="resolving"||room.picks?.length!==2)return;
+  const [a,b]=room.picks;
+  if(room.deck[a]===room.deck[b]){room.matched=[...(room.matched||[]),a,b];room.scores[room.turn]=(room.scores[room.turn]||0)+1;}
+  else room.turn=room.turn==="X"?"O":"X";
+  room.picks=[];room.phase="ready";
+  if(room.matched.length===room.deck.length)room.status="finished";
+  return room;
+ });
+}
+
+// 2048: smooth tile entry and keyboard/swipe support.
+function game2048(){
+ let g=Array(16).fill(0),score=0,touch=null;const add=()=>{const e=g.map((v,i)=>v?null:i).filter(v=>v!==null);if(e.length)g[e[Math.floor(Math.random()*e.length)]]=Math.random()<.9?2:4;};
+ add();add();
+ function draw(){$("miniGameBody").innerHTML='<div class="mini-score">SCORE <b>'+score+'</b></div><div class="mini-board tile-board">'+g.map((v,i)=>'<div class="tile" data-value="'+v+'" data-index="'+i+'">'+(v||"")+'</div>').join("")+'</div><p class="game-help">Use arrow keys or swipe to combine matching tiles.</p>';}
+ function move(d){let old=g.join(",");for(let n=0;n<4;n++){let ids=d==="left"?[0,1,2,3].map(k=>n*4+k):d==="right"?[3,2,1,0].map(k=>n*4+k):d==="up"?[0,1,2,3].map(k=>k*4+n):[3,2,1,0].map(k=>k*4+n),v=ids.map(i=>g[i]).filter(Boolean),o=[];for(let k=0;k<v.length;k++){if(v[k]===v[k+1]){o.push(v[k]*2);score+=v[k]*2;k++;}else o.push(v[k]);}while(o.length<4)o.push(0);ids.forEach((id,k)=>g[id]=o[k]);}if(old!==g.join(","))add();draw();}
+ const key=e=>{const d=({ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down"})[e.key];if(d&&active==="2048"){e.preventDefault();move(d);}};
+ window.addEventListener("keydown",key);cleanup=()=>window.removeEventListener("keydown",key);draw();
+ $("miniGameBody").addEventListener("touchstart",e=>{touch=[e.touches[0].clientX,e.touches[0].clientY];},{passive:true});
+ $("miniGameBody").addEventListener("touchend",e=>{if(!touch)return;let dx=e.changedTouches[0].clientX-touch[0],dy=e.changedTouches[0].clientY-touch[1];if(Math.max(Math.abs(dx),Math.abs(dy))>25)move(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));touch=null;},{passive:true});
+}
+function snake(){
+ $("miniGameBody").innerHTML='<div class="mini-score">SCORE <b id="snakeScore">0</b></div><canvas class="game-canvas" id="snakeCanvas" width="400" height="400"></canvas><p class="game-help">Arrow keys or swipe to steer. Eat the glowing fruit and avoid your tail.</p><div class="game-controls"><button class="secondary-button" data-dir="up">↑</button><button class="secondary-button" data-dir="left">←</button><button class="secondary-button" data-dir="down">↓</button><button class="secondary-button" data-dir="right">→</button></div>';
+ const c=$("snakeCanvas"),ctx=c.getContext("2d"),body=[{x:9,y:10},{x:8,y:10},{x:7,y:10}],s={d:{x:1,y:0},next:{x:1,y:0},food:{x:14,y:10},score:0,dead:false};const dirs={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
+ const turn=d=>{if(d.x!==-s.d.x||d.y!==-s.d.y)s.next=d;};$("miniGameBody").querySelectorAll("[data-dir]").forEach(b=>b.onclick=()=>turn(dirs[b.dataset.dir]));
+ const key=e=>{let d=({ArrowUp:dirs.up,ArrowDown:dirs.down,ArrowLeft:dirs.left,ArrowRight:dirs.right})[e.key];if(d&&active==="snake"){e.preventDefault();turn(d);}};window.addEventListener("keydown",key);cleanup=()=>window.removeEventListener("keydown",key);
+ const draw=()=>{ctx.clearRect(0,0,400,400);ctx.fillStyle="#111522";ctx.fillRect(0,0,400,400);ctx.strokeStyle="#ffffff08";for(let i=0;i<=20;i++){ctx.beginPath();ctx.moveTo(i*20,0);ctx.lineTo(i*20,400);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*20);ctx.lineTo(400,i*20);ctx.stroke();}ctx.shadowBlur=18;ctx.shadowColor="#ff78b7";ctx.fillStyle="#ff78b7";ctx.beginPath();ctx.arc(s.food.x*20+10,s.food.y*20+10,7,0,Math.PI*2);ctx.fill();ctx.shadowColor="#8ef0c0";ctx.fillStyle="#8ef0c0";body.forEach((p,i)=>{ctx.globalAlpha=1-i*.025;ctx.beginPath();ctx.roundRect(p.x*20+2,p.y*20+2,16,16,5);ctx.fill();});ctx.globalAlpha=1;ctx.shadowBlur=0;};
+ timer=setInterval(()=>{if(s.dead)return;s.d=s.next;const h={x:body[0].x+s.d.x,y:body[0].y+s.d.y};if(h.x<0||h.y<0||h.x>=20||h.y>=20||body.some(p=>p.x===h.x&&p.y===h.y)){s.dead=true;clearInterval(timer);$("miniGameBody").insertAdjacentHTML("beforeend",'<div class="game-over-panel"><h3>Game over</h3><p>Final score: '+s.score+'</p><button class="primary-button" id="snakeAgain">Try again ↻</button></div>');$("snakeAgain").onclick=()=>openGame("snake");return;}body.unshift(h);if(h.x===s.food.x&&h.y===s.food.y){s.score++;$("snakeScore").textContent=s.score;do{s.food={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)};}while(body.some(p=>p.x===s.food.x&&p.y===s.food.y));}else body.pop();draw();},115);draw();
+}
+function blocks(){
+ const shapes=[[[0,0],[1,0],[0,1],[1,1]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[2,0]],[[0,0],[1,0],[1,1]],[[1,0],[0,1],[1,1],[2,1]],[[0,0],[0,1],[1,1]],[[0,0],[1,0],[2,0],[1,1]]];
+ let grid=Array(100).fill(false),score=0,selected=0,pieces=[];
+ const newPieces=()=>pieces=Array.from({length:3},()=>shapes[Math.floor(Math.random()*shapes.length)]);
+ newPieces();
+ function canPlace(shape,row,col){return shape.every(([x,y])=>row+y<10&&col+x<10&&!grid[(row+y)*10+col+x]);}
+ function draw(){
+  $("miniGameBody").innerHTML='<div class="mini-score">LINES CLEARED <b>'+score+'</b></div><div class="mini-board block-grid">'+grid.map((v,i)=>'<button class="block-cell '+(v?'filled':'')+'" data-i="'+i+'" aria-label="Board cell"></button>').join("")+'</div><p class="game-help">Choose a shape, then tap the board to place it. Complete a full row or column to clear it.</p><div class="block-tray">'+pieces.map((shape,i)=>'<button class="block-piece '+(selected===i?'selected':'')+'" data-piece="'+i+'" '+(shape.length===0?'disabled':'')+'>'+Array.from({length:3},(_,y)=>'<span class="piece-row">'+Array.from({length:3},(_,x)=>'<i class="'+(shape.some(([sx,sy])=>sx===x&&sy===y)?'piece-dot':'')+'"></i>').join("")+'</span>').join("")+'</button>').join("")+'</div>';
+  $("miniGameBody").querySelectorAll(".block-piece").forEach(btn=>btn.onclick=()=>{selected=+btn.dataset.piece;draw();});
+  $("miniGameBody").querySelectorAll(".block-cell").forEach(btn=>btn.onclick=()=>{const idx=+btn.dataset.i,row=Math.floor(idx/10),col=idx%10,shape=pieces[selected];if(!shape||!canPlace(shape,row,col)){btn.classList.add("invalid");setTimeout(()=>btn.classList.remove("invalid"),250);return;}shape.forEach(([x,y])=>grid[(row+y)*10+col+x]=true);pieces[selected]=[];const clearRows=[],clearCols=[];for(let r=0;r<10;r++)if(grid.slice(r*10,r*10+10).every(Boolean))clearRows.push(r);for(let c=0;c<10;c++)if(Array.from({length:10},(_,r)=>grid[r*10+c]).every(Boolean))clearCols.push(c);clearRows.forEach(r=>{for(let c=0;c<10;c++)grid[r*10+c]=false;});clearCols.forEach(c=>{for(let r=0;r<10;r++)grid[r*10+c]=false;});score+=clearRows.length+clearCols.length;if(pieces.every(p=>p.length===0))newPieces();if(pieces.every(p=>!p.length||!hasPlacement(p))){$("miniGameBody").insertAdjacentHTML("beforeend",'<div class="game-over-panel"><h3>No more moves!</h3><p>Lines cleared: '+score+'</p><button class="primary-button" id="blocksAgain">Play again</button></div>');$("blocksAgain").onclick=()=>openGame("blocks");return;}draw();});
+ }
+ draw();
+}
+function racer(){
+ $("miniGameBody").innerHTML='<div class="mini-score">DISTANCE <b id="raceScore">0</b></div><canvas class="game-canvas" id="raceCanvas" width="360" height="500"></canvas><p class="game-help">Use ← and → or tap a lane to dodge traffic.</p>';
+ const c=$("raceCanvas"),ctx=c.getContext("2d"),s={lane:1,obs:[],tick:0,score:0,dead:false,road:0};
+ const key=e=>{if(active!=="racer")return;if(e.key==="ArrowLeft"){s.lane=Math.max(0,s.lane-1);e.preventDefault();}if(e.key==="ArrowRight"){s.lane=Math.min(2,s.lane+1);e.preventDefault();}};window.addEventListener("keydown",key);cleanup=()=>window.removeEventListener("keydown",key);c.onclick=e=>{let r=c.getBoundingClientRect();s.lane=Math.max(0,Math.min(2,Math.floor((e.clientX-r.left)/r.width*3)));};
+ function draw(){ctx.fillStyle="#111522";ctx.fillRect(0,0,360,500);ctx.fillStyle="#35364a";ctx.fillRect(38,0,284,500);ctx.strokeStyle="#e8dfff99";ctx.lineWidth=4;ctx.setLineDash([26,24]);ctx.lineDashOffset=-s.road;ctx.beginPath();ctx.moveTo(132,0);ctx.lineTo(132,500);ctx.moveTo(226,0);ctx.lineTo(226,500);ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=18;ctx.shadowColor="#8ef0c0";ctx.fillStyle="#8ef0c0";ctx.beginPath();ctx.roundRect(58+s.lane*94,408,52,72,10);ctx.fill();ctx.shadowColor="#ff78b7";ctx.fillStyle="#ff78b7";s.obs.forEach(o=>{ctx.beginPath();ctx.roundRect(58+o.lane*94,o.y,52,66,9);ctx.fill();});ctx.shadowBlur=0;}
+ timer=setInterval(()=>{if(s.dead)return;s.tick++;s.road=(s.road+7)%50;if(s.tick%30===0)s.obs.push({lane:Math.floor(Math.random()*3),y:-70});s.obs.forEach(o=>o.y+=7);s.obs=s.obs.filter(o=>o.y<520);if(s.obs.some(o=>o.lane===s.lane&&o.y>350&&o.y<475)){s.dead=true;clearInterval(timer);$("raceCanvas").classList.add("crash-shake");$("miniGameBody").insertAdjacentHTML("beforeend",'<div class="game-over-panel"><h3>CRASH!</h3><p>Distance: '+s.score+'</p><button class="primary-button" id="raceAgain">Race again ↻</button></div>');$("raceAgain").onclick=()=>openGame("racer");return;}if(s.tick%5===0){s.score++;$("raceScore").textContent=s.score;}draw();},35);draw();
+}

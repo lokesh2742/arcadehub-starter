@@ -122,3 +122,5 @@ main{max-width:1160px;margin:auto;padding:0 28px}.hero{min-height:350px;display:
 .ad-slot-placeholder{min-height:90px;display:grid;place-items:center;color:#777b91;font-size:11px}
 .ad-slot--footer{max-width:728px;margin-top:8px;margin-bottom:36px}
 @media(max-width:560px){.ad-slot{width:calc(100% - 30px);margin:18px auto 22px}.ad-slot-placeholder{min-height:100px}}
+
+.profile-dialog .full-button{width:100%;margin:8px 0}#signOutButton[hidden],#googleSignInButton[hidden]{display:none!important}

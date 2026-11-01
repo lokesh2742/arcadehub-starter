@@ -24,9 +24,13 @@ async function reserveUsername(candidate,u){
 }
 async function ensureProfile(u){
  const profileRef=ref(db,"playerUsernames/"+u.uid),existing=await get(profileRef);
- if(existing.exists()){
-  const saved=String(existing.val().username||"").toLowerCase();
-  if(/^[a-z0-9]{3,20}$/.test(saved)){username=saved;return;}
+ const saved=existing.exists()?String(existing.val().username||"").toLowerCase():"";
+ if(/^[a-z0-9]{3,20}$/.test(saved)){
+  // Repair a missing/stale public directory entry on every sign-in. Older
+  // versions could save the private mapping even when directory creation failed.
+  const repaired=await reserveUsername(saved,u);
+  if(repaired){username=saved;return;}
+  throw Error("Your username is already registered to another account. Change it in Friends to continue.");
  }
  const preferred=makeUsername(u),base=preferred.replace(/[0-9]+$/g,"");
  let candidate="";
@@ -49,8 +53,8 @@ async function changeUsername(){
   const friendUpdates={};Object.keys(friends).forEach(friendUid=>{friendUpdates["friends/"+friendUid+"/"+user.uid+"/username"]=username;});
   if(Object.keys(friendUpdates).length)await update(ref(db),friendUpdates);
   await remove(ref(db,"playerDirectory/"+old)).catch(()=>{});
-  $("myFriendCode").textContent="@"+username;input.value="";
-  say("Username changed to @"+username+". It will stay yours until you change it again.");
+  $("myFriendCode").textContent=username;input.value="";
+  say("Username changed to "+username+". It will stay yours until you change it again.");
  }catch(e){say(e.message||"Could not change username. Please try again.");}
  finally{if(button)button.disabled=false;}
 }
@@ -101,7 +105,7 @@ async function acceptFriend(uid){
  }catch(e){say(e.message||"Could not accept request. Check Firebase database rules.");}
 }
 async function searchPlayer(){
- const query=$("friendSearchInput").value.trim().replace(/^@/,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
+ const query=$("friendSearchInput").value.trim().replace(/^@/,"").replace(/\s+/g,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
  if(!/^[a-z0-9]{3,20}$/.test(query)){say("Enter a username with 3–20 letters or numbers.");return;}
  try{
   const snap=await get(ref(db,"playerDirectory/"+query));
@@ -159,12 +163,12 @@ $("saveUsernameButton").addEventListener("click",changeUsername);
 $("changeUsernameInput").addEventListener("keydown",e=>{if(e.key==="Enter")changeUsername();});
 $("changeUsernameInput").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20);});
 $("friendSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayer();});
-$("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is @"+username);}});
+$("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is "+username);}});
 onAuthStateChanged(auth,async u=>{
  if(user?.uid&&!u)update(ref(db,"presence/"+user.uid),{state:"offline",lastChanged:Date.now()}).catch(()=>{});
  user=u;stopListeners();username="";friends={};requests={};invites={};presence={};
  $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}
- try{await ensureProfile(u);$("myFriendCode").textContent="@"+username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
+ try{await ensureProfile(u);$("myFriendCode").textContent=username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
  catch(e){$("myFriendCode").textContent="Username unavailable";say("Username setup failed: "+(e.message||"Check your Firebase connection and Realtime Database rules."));console.error("ArcadeHub username setup failed:",e);}
 });

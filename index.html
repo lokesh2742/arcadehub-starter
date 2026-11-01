@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#10111b" />
   <title>ArcadeHub — Play Together</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=arcadehub-2" />
 </head>
 <body>
   <header class="topbar">
@@ -40,16 +40,15 @@
         <span class="results-label" id="resultsLabel">Showing 6 games</span>
       </div>
       <div class="game-grid" id="gameGrid">
-        <button class="game-card" data-name="tic tac toe" data-type="single multi" data-game="tictactoe">
-          <div class="game-art tic-art"><span class="symbol-x">×</span><span class="symbol-o">○</span><span class="art-tag">FEATURED</span></div>
-          <div class="game-info"><div><h3>Tic Tac Toe</h3><p>Quick strategy · 1–2 players</p></div><span class="play-arrow">↗</span></div>
-          <div class="game-meta"><span>VS AI</span><span>VS PLAYER</span><span>ONLINE</span></div>
-        </button>
-        <button class="game-card" data-name="memory match" data-type="single" data-game="coming"><div class="game-art memory-art"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><div class="game-info"><div><h3>Memory Match</h3><p>Train your brain · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SINGLE PLAYER</span></div></button>
-        <button class="game-card" data-name="neon racer" data-type="single" data-game="coming"><div class="game-art racer-art"><span>🏎️</span><b>NEON RACER</b></div><div class="game-info"><div><h3>Neon Racer</h3><p>Speed challenge · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SINGLE PLAYER</span></div></button>
-        <button class="game-card" data-name="connect four" data-type="multi" data-game="coming"><div class="game-art connect-art"><span>🔴 🟡 🔴<br>🟡 🔴 🟡</span></div><div class="game-info"><div><h3>Connect Four</h3><p>Think ahead · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>MULTIPLAYER</span></div></button>
-        <button class="game-card" data-name="word sprint" data-type="single multi" data-game="coming"><div class="game-art word-art"><b>WORD<br>SPRINT</b></div><div class="game-info"><div><h3>Word Sprint</h3><p>Beat the clock · 1–2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>SOLO</span><span>DUEL</span></div></button>
-        <button class="game-card" data-name="pixel pong" data-type="multi" data-game="coming"><div class="game-art pong-art"><span>▏　●　▕</span><b>PIXEL PONG</b></div><div class="game-info"><div><h3>Pixel Pong</h3><p>Classic arcade · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>MULTIPLAYER</span></div></button>
+        <button class="game-card" data-name="tic tac toe" data-type="single multi" data-game="tictactoe"><div class="game-art tic-art"><span class="symbol-x">×</span><span class="symbol-o">○</span><span class="art-tag">FEATURED</span></div><div class="game-info"><div><h3>Tic Tac Toe</h3><p>Quick strategy · 1–2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>VS AI</span><span>LOCAL</span><span>ONLINE</span></div></button>
+        <button class="game-card" data-name="memory match" data-type="single" data-game="memory"><div class="game-art memory-art"><span>◆</span><span>●</span><span>▲</span><span>★</span></div><div class="game-info"><div><h3>Memory Match</h3><p>Find matching pairs · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>PLAY NOW</span></div></button>
+        <button class="game-card" data-name="snake" data-type="single" data-game="snake"><div class="game-art snake-art"><span>🐍</span><b>SNAKE</b></div><div class="game-info"><div><h3>Snake</h3><p>Eat, grow and survive</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>ARCADE</span></div></button>
+        <button class="game-card" data-name="2048" data-type="single" data-game="2048"><div class="game-art tiles-art"><b>2048</b><span>2&nbsp; 4&nbsp; 8&nbsp; 16</span></div><div class="game-info"><div><h3>2048</h3><p>Merge tiles to reach 2048</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>PUZZLE</span></div></button>
+        <button class="game-card" data-name="block puzzle" data-type="single" data-game="blocks"><div class="game-art blocks-art"><span>🟪 🟦 🟪<br>🟦 🟪 🟦</span></div><div class="game-info"><div><h3>Block Puzzle</h3><p>Fill rows and columns</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>PUZZLE</span></div></button>
+        <button class="game-card" data-name="neon racer" data-type="single" data-game="racer"><div class="game-art racer-art"><span>🏎️</span><b>NEON RACER</b></div><div class="game-info"><div><h3>Neon Racer</h3><p>Dodge traffic · Solo</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>ARCADE</span></div></button>
+        <button class="game-card" data-name="chess" data-type="multi" data-game="upcoming"><div class="game-art chess-art">♞ ♜ ♛</div><div class="game-info"><div><h3>Chess</h3><p>Strategy · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>COMING SOON</span></div></button>
+        <button class="game-card" data-name="battleship" data-type="multi" data-game="upcoming"><div class="game-art battle-art">🚢　💥　🌊</div><div class="game-info"><div><h3>Battleship</h3><p>Naval strategy · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>COMING SOON</span></div></button>
+        <button class="game-card" data-name="pool" data-type="multi" data-game="upcoming"><div class="game-art pool-art">🎱　●　🎱</div><div class="game-info"><div><h3>Pool</h3><p>Classic 8-ball · 2 players</p></div><span class="play-arrow">↗</span></div><div class="game-meta"><span>COMING SOON</span></div></button>
       </div>
       <p class="empty-state" id="emptyState" hidden>No games match your search.</p>
     </section>
@@ -125,9 +124,11 @@
       <p class="game-hint" id="gameHint">Get three in a row to win.</p>
       <p class="connection-status" id="connectionStatus"></p>
     </div>
+    <div class="result-overlay" id="onlineResultModal" hidden><div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="resultTitle"><div class="result-confetti">✦</div><p class="eyebrow">ROUND COMPLETE</p><h2 id="resultTitle">Winner!</h2><p id="resultMessage">Great game.</p><div class="result-actions"><button class="secondary-button" id="exitToMenuButton">Exit to main menu</button><button class="primary-button" id="newMatchButton">New match ↻</button></div><p class="rematch-note" id="rematchNote">Both players need to choose New Match.</p></div></div>
   </section>
+  <section class="mini-game-screen" id="miniGameScreen" hidden><div class="mini-game-top"><button class="secondary-button" id="miniGameBack">← All games</button><h2 id="miniGameTitle">Game</h2><button class="secondary-button" id="miniGameRestart">Restart ↻</button></div><div class="mini-game-body" id="miniGameBody"></div></section>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="script.js"></script>
+  <script type="module" src="script.js?v=arcadehub-2"></script>
 </body>
 </html>

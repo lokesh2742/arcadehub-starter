@@ -12,17 +12,47 @@ const say=s=>{if($("friendsStatus"))$("friendsStatus").textContent=s;};
 const online=uid=>presence[uid]?.state==="online";
 function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];presenceWatchers={};if(presenceOff){presenceOff();presenceOff=null;}}
 function makeUsername(u){
- const base=(u.displayName||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,18)||"player";
- return (base+"-"+u.uid.slice(-6)).toLowerCase();
+ const base=((u.displayName||"player").trim().split(/\s+/)[0]||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,12)||"player";
+ let hash=0;for(const ch of u.uid)hash=(hash*31+ch.charCodeAt(0))%9000;
+ return base+(1000+hash);
+}
+async function reserveUsername(candidate,u){
+ const directoryRef=ref(db,"playerDirectory/"+candidate);
+ const result=await runTransaction(directoryRef,old=>old===null?{uid:u.uid,name:u.displayName||"ArcadeHub Player",username:candidate,createdAt:Date.now()}:undefined);
+ if(result.committed||(result.snapshot.exists()&&result.snapshot.val().uid===u.uid))return candidate;
+ return "";
 }
 async function ensureProfile(u){
  const profileRef=ref(db,"playerUsernames/"+u.uid),existing=await get(profileRef);
- if(existing.exists()){username=existing.val().username;return;}
- username=makeUsername(u);
- const directoryRef=ref(db,"playerDirectory/"+username);
- const result=await runTransaction(directoryRef,old=>old===null?{uid:u.uid,name:u.displayName||"ArcadeHub Player",username,createdAt:Date.now()}:undefined);
- if(!result.committed){const current=await get(directoryRef);if(!current.exists()||current.val().uid!==u.uid)throw Error("That username is already taken. Please sign in again or contact support.");}
- await set(profileRef,{username});
+ if(existing.exists()){
+  const saved=String(existing.val().username||"").toLowerCase();
+  if(/^[a-z0-9]{3,20}$/.test(saved)){username=saved;return;}
+ }
+ const preferred=makeUsername(u),base=preferred.replace(/[0-9]+$/g,"");
+ let candidate="";
+ for(let n=0;n<20&&!candidate;n++)candidate=await reserveUsername(base+(1000+((Number(preferred.slice(-4))-1000+n)%9000)),u);
+ if(!candidate)throw Error("Could not create a unique username. Please try again.");
+ username=candidate;await set(profileRef,{username});
+}
+async function changeUsername(){
+ const input=$("changeUsernameInput"),next=String(input?.value||"").trim().toLowerCase();
+ if(!/^[a-z0-9]{3,20}$/.test(next)){say("Use 3–20 letters or numbers, with no spaces.");return;}
+ if(next===username){say("That is already your username.");return;}
+ const button=$("saveUsernameButton");if(button)button.disabled=true;
+ try{
+  const candidate=await reserveUsername(next,user);
+  if(!candidate)throw Error("That username is already taken. Try another one.");
+  const old=username;
+  await set(ref(db,"playerUsernames/"+user.uid),{username:candidate});
+  username=candidate;
+  await update(ref(db,"presence/"+user.uid),{username});
+  const friendUpdates={};Object.keys(friends).forEach(friendUid=>{friendUpdates["friends/"+friendUid+"/"+user.uid+"/username"]=username;});
+  if(Object.keys(friendUpdates).length)await update(ref(db),friendUpdates);
+  await remove(ref(db,"playerDirectory/"+old)).catch(()=>{});
+  $("myFriendCode").textContent="@"+username;input.value="";
+  say("Username changed to @"+username+". It will stay yours until you change it again.");
+ }catch(e){say(e.message||"Could not change username. Please try again.");}
+ finally{if(button)button.disabled=false;}
 }
 async function startPresence(){
  const statusRef=ref(db,"presence/"+user.uid);
@@ -72,7 +102,7 @@ async function acceptFriend(uid){
 }
 async function searchPlayer(){
  const query=$("friendSearchInput").value.trim().replace(/^@/,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
- if(!/^[a-z0-9-]{3,32}$/.test(query)){say("Enter the player's username (for example, @alex-12ab34).");return;}
+ if(!/^[a-z0-9]{3,20}$/.test(query)){say("Enter a username with 3–20 letters or numbers.");return;}
  try{
   const snap=await get(ref(db,"playerDirectory/"+query));
   if(!snap.exists()){out.innerHTML='<p class="game-help">No player found. Check the username and try again.</p>';return;}
@@ -125,6 +155,9 @@ $("closeFriendsButton").addEventListener("click",()=>$("friendsOverlay").hidden=
 $("friendsOverlay").addEventListener("click",e=>{if(e.target===$("friendsOverlay"))$("friendsOverlay").hidden=true;});
 document.querySelectorAll(".friends-tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.friendsTab)));
 $("friendSearchButton").addEventListener("click",searchPlayer);
+$("saveUsernameButton").addEventListener("click",changeUsername);
+$("changeUsernameInput").addEventListener("keydown",e=>{if(e.key==="Enter")changeUsername();});
+$("changeUsernameInput").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20);});
 $("friendSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayer();});
 $("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is @"+username);}});
 onAuthStateChanged(auth,async u=>{

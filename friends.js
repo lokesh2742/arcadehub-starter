@@ -24,8 +24,8 @@ async function ensureProfile(u){
 function renderFriends(){
  const list=$("friendsList");if(!list)return;
  const entries=Object.entries(friends);
- list.innerHTML=entries.length?entries.map(([uid,f])=>'<div class="friend-row"><span class="friend-avatar">'+esc((f.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(f.name||"Player")+'</b><small>'+esc(f.friendCode||"ArcadeHub friend")+'</small></span><button class="secondary-button" data-invite="'+esc(uid)+'">Invite</button></div>').join(""):'<p class="game-help">No friends yet. Find a player by their Friend ID.</p>';
- list.querySelectorAll("[data-invite]").forEach(b=>b.onclick=()=>sendInvite(b.dataset.invite));
+ list.innerHTML=entries.length?entries.map(([uid,f])=>'<div class="friend-row"><span class="friend-avatar">'+esc((f.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(f.name||"Player")+'</b><small>'+esc(f.friendCode||"ArcadeHub friend")+'</small></span><button class="secondary-button" data-invite="'+esc(uid)+'" data-game="tictactoe">Tic Tac Toe</button><button class="secondary-button" data-invite="'+esc(uid)+'" data-game="memory">Memory</button></div>').join(""):'<p class="game-help">No friends yet. Find a player by their Friend ID.</p>';
+ list.querySelectorAll("[data-invite]").forEach(b=>b.onclick=()=>sendInvite(b.dataset.invite,b.dataset.game));
 }
 function renderInbox(){
  const box=$("friendsInbox");if(!box)return;

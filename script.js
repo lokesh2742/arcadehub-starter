@@ -418,6 +418,7 @@ async function createRoom() {
       const result = await runTransaction(candidate, existing => {
         if (existing === null) {
           return {
+            type:"tictactoe",
             status:"waiting",
             hostId:userId,
             createdAt:Date.now(),
@@ -495,6 +496,10 @@ async function joinRoom(code) {
     // Keep an untouched copy for the transaction.
     const existingRoom = roomSnapshot.val();
 
+    if (existingRoom.type && existingRoom.type !== "tictactoe") {
+      throw new Error("This room belongs to another game. Open that game to join it.");
+    }
+
     if (
       existingRoom.status !== "waiting" ||
       existingRoom.players?.O
@@ -510,6 +515,7 @@ async function joinRoom(code) {
       );
 
       if (
+        (currentRoom.type && currentRoom.type !== "tictactoe") ||
         currentRoom.status !== "waiting" ||
         currentRoom.players?.O
       ) {

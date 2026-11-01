@@ -31,7 +31,7 @@ function memoryMenu(){
  $("memoryPlayFriend").onclick=()=>memoryFriendHub();
 }
 function memoryFriendHub(){
- $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">ARCADEHUB FRIENDS</p><h2>Play with a friend.</h2><p class="game-help">Invite someone who is online, or add a friend to play later.</p><button class="text-button" id="memoryFriendBack">← Back to games</button></div>';
+ $("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">ARCADEHUB FRIENDS</p><h2>Play with a friend.</h2><p class="game-help">Invite someone who is online, or add a friend to play later.</p><div class="game-invite-panel" id="memoryFriendInvites"><p class="game-help">Loading online friends…</p></div><button class="text-button" id="memoryFriendBack">← Back to games</button></div>';
  window.arcadeHubRenderGameInvites?.("memoryFriendInvites","memory");$("memoryFriendBack").onclick=memoryMenu;
 }
 function shuffledDeck(){const a=["◆","●","▲","★","♥","☀","☂","✿"];return [...a,...a].sort(()=>Math.random()-.5);}

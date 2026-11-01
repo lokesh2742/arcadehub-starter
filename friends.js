@@ -1,8 +1,10 @@
-import {getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getApps,initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getDatabase,ref,get,set,update,remove,onValue,runTransaction,push,onDisconnect} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
-const $=id=>document.getElementById(id),app=getApps().find(a=>a.name==="[DEFAULT]");
-const auth=app?getAuth(app):null,db=app?getDatabase(app):null;
+const firebaseConfig={apiKey:"AIzaSyDAFaBhBwHvWkxkU7KH8n-IsGICwFzYUl4",authDomain:"arcadehub-3f060.firebaseapp.com",databaseURL:"https://arcadehub-3f060-default-rtdb.firebaseio.com",projectId:"arcadehub-3f060",storageBucket:"arcadehub-3f060.firebasestorage.app",messagingSenderId:"777660361833",appId:"1:777660361833:web:623f0ce7d78a4733ac46f8",measurementId:"G-Q1GX1EEMWX"};
+const $=id=>document.getElementById(id);
+let app=null,auth=null,db=null;
+try{app=getApps().find(a=>a.name==="[DEFAULT]")||initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);}catch(e){console.error("ArcadeHub Friends Firebase initialization failed:",e);}
 let user=null,username="",friends={},requests={},invites={},presence={},presenceWatchers={},unsubs=[],presenceOff=null,launched={};
 const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -52,11 +54,14 @@ function renderGameInvites(containerId,game){
  const box=$(containerId);if(!box)return;
  const entries=Object.entries(friends).filter(([uid])=>online(uid));
  box.innerHTML='<div class="game-invite-heading"><b>Invite an online friend</b><span class="online-count">'+entries.length+' online</span></div>'+
- (entries.length?entries.map(([uid,f])=>'<div class="game-invite-row"><span>'+esc(f.name||"Player")+' <small>@'+esc(f.username||"")+'</small></span><button class="secondary-button" data-game-invite="'+esc(uid)+'">Invite</button></div>').join(""):'<p class="game-help">No friends are online right now. They must be signed in and have ArcadeHub open.</p>')+
+ (entries.length?entries.map(([uid,f])=>'<div class="game-invite-row"><span>'+esc(f.name||"Player")+' <small>@'+esc(f.username||"")+'</small></span><button class="secondary-button" data-game-invite="'+esc(uid)+'">Invite</button></div>').join(""):'<div class="no-online-friends"><p class="game-help">No friends are online right now. You can add another friend or invite them when they come online.</p><button type="button" class="secondary-button" data-add-friend-from-game>Add a friend</button></div>')+
  '<p class="game-help invite-feedback" aria-live="polite"></p>';
+ box.querySelector("[data-add-friend-from-game]")?.addEventListener("click",()=>window.arcadeHubOpenFriendSearch?.());
  box.querySelectorAll("[data-game-invite]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await sendInvite(b.dataset.gameInvite,game);box.querySelector(".invite-feedback").textContent="Invitation sent!";}catch(e){box.querySelector(".invite-feedback").textContent=e.message||"Could not send invitation.";}finally{b.disabled=false;}});
 }
 window.arcadeHubRenderGameInvites=(containerId,game)=>renderGameInvites(containerId,game);
+window.arcadeHubOpenFriendSearch=()=>{const overlay=$("friendsOverlay");if(overlay)overlay.hidden=false;showTab("search");$("friendSearchInput")?.focus();};
+window.arcadeHubOpenFriends=()=>{const overlay=$("friendsOverlay");if(overlay)overlay.hidden=false;showTab("friends");};
 async function acceptFriend(uid){
  try{
   const snap=await get(ref(db,"friendRequests/"+user.uid+"/"+uid));if(!snap.exists())return;
@@ -128,5 +133,5 @@ onAuthStateChanged(auth,async u=>{
  $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}
  try{await ensureProfile(u);$("myFriendCode").textContent="@"+username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
- catch(e){say(e.message||"Could not set up your player profile.");}
+ catch(e){$("myFriendCode").textContent="Username unavailable";say("Username setup failed: "+(e.message||"Check your Firebase connection and Realtime Database rules."));console.error("ArcadeHub username setup failed:",e);}
 });

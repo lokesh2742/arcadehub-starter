@@ -61,3 +61,39 @@ main{max-width:1160px;margin:auto;padding:0 28px}.hero{min-height:350px;display:
 @keyframes screen-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:560px){.profile-trigger{font-size:10px;gap:6px;padding-right:9px}.profile-trigger .profile-avatar{width:25px;height:25px}.welcome-dialog,.profile-dialog{padding:28px 20px}.welcome-dialog h2,.profile-dialog h2{font-size:22px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+.memory-welcome,.memory-room-panel,.memory-win{max-width:470px;margin:30px auto;padding:30px 24px;border:1px solid #ffffff16;border-radius:18px;background:linear-gradient(145deg,#25213a,#191b29);box-shadow:0 18px 55px #0005;animation:dialog-enter .4s ease both}
+.memory-hero-icons{display:flex;justify-content:center;gap:10px;margin:0 0 24px}
+.memory-hero-icons span{width:44px;height:52px;display:grid;place-items:center;border-radius:10px;background:#453966;color:#e5d9ff;font-size:25px;box-shadow:0 7px 18px #0004;animation:art-float 2.7s ease-in-out infinite}
+.memory-hero-icons span:nth-child(2){background:#5b3657;color:#ffc5df;animation-delay:.3s}.memory-hero-icons span:nth-child(3){background:#28534f;color:#a9f5d7;animation-delay:.6s}.memory-hero-icons span:nth-child(4){background:#5b4b2e;color:#ffe2a6;animation-delay:.9s}
+.memory-welcome h2,.memory-room-panel h2,.memory-win h2{font:700 29px 'Space Grotesk';margin:0 0 10px}
+.memory-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
+.memory-mode-card{min-height:135px;border:1px solid #ffffff18;border-radius:13px;background:#ffffff08;color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:transform .2s,border-color .2s,background .2s}
+.memory-mode-card:hover{transform:translateY(-4px);border-color:#a78bfa;background:#a78bfa12}.memory-mode-card span{font-size:28px}.memory-mode-card b{font:700 13px 'Space Grotesk'}.memory-mode-card small{font-size:10px;color:var(--muted)}
+.memory-hud{display:flex;justify-content:space-between;max-width:390px;margin:0 auto 12px;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:#ffffff08;color:var(--muted);font-size:10px;letter-spacing:.6px;text-transform:uppercase}
+.memory-hud b{display:block;color:#fff;font:700 18px 'Space Grotesk';margin-top:3px}
+.memory-card{display:grid;place-items:center;min-width:0;aspect-ratio:1;border:1px solid #ffffff20;border-radius:12px;background:linear-gradient(145deg,#44375f,#29243f);font:700 clamp(24px,6vw,38px) 'Space Grotesk';color:#d7c9ff;cursor:pointer;box-shadow:0 6px 15px #0004;animation:card-arrive .3s ease both}
+.memory-card:nth-child(3n){animation-delay:.035s}.memory-card:nth-child(3n + 1){animation-delay:.07s}
+.memory-card.revealed{background:linear-gradient(145deg,#d9cbff,#a78bfa);color:#251d3b;animation:card-reveal .38s cubic-bezier(.2,.8,.2,1) both}
+.memory-card.matched{background:linear-gradient(145deg,#9cf3ca,#49bd91);color:#143528;box-shadow:0 0 18px #8ef0c055;animation:match-pulse .48s ease both}
+.memory-card:disabled{cursor:default;opacity:1}
+.memory-room-panel .full-button{width:100%;margin:18px 0}
+.room-code-entry{display:flex;gap:8px;margin:14px 0}.room-code-entry input{min-width:0;flex:1;height:43px;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:#10111b;color:white;text-transform:uppercase;letter-spacing:2px;text-align:center}
+.memory-room-code{font:700 35px 'Space Grotesk';letter-spacing:8px;padding:18px;margin:18px 0;border:1px dashed #a78bfa88;border-radius:12px;color:#e4d9ff;background:#a78bfa10}
+.memory-online-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;max-width:500px;margin:0 auto 12px}
+.memory-player{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 7px;text-align:left;padding:10px;border:1px solid var(--line);border-radius:10px;background:#ffffff08;min-width:0}
+.memory-player>span{grid-row:span 2;color:#a78bfa}.memory-player b{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.memory-player strong{font:700 18px 'Space Grotesk'}
+.memory-player:last-child{text-align:right;grid-template-columns:1fr auto}.memory-player:last-child>span{grid-column:2;grid-row:1 / span 2}.memory-player:last-child b{grid-column:1;grid-row:1}.memory-player:last-child strong{grid-column:1;grid-row:2}
+.memory-player.your-turn{border-color:#a78bfa;box-shadow:0 0 18px #a78bfa22}
+.memory-turn{font-size:8px;letter-spacing:1px;font-weight:800;color:#c7b7ff;white-space:nowrap}
+.memory-room-strip{font-size:9px;letter-spacing:1px;color:var(--muted);margin:8px auto 12px}.memory-room-strip b{color:#e4d9ff;letter-spacing:2px}
+.memory-win{max-width:390px}.win-medal{font-size:50px;color:#ffe2a6;text-shadow:0 0 30px #ffcb6c77;margin-bottom:15px}
+.game-over-panel{max-width:360px;margin:15px auto;padding:20px;border:1px solid #a78bfa66;border-radius:14px;background:#292342;animation:dialog-enter .3s ease both}
+.game-over-panel h3{font:700 22px 'Space Grotesk';margin:0 0 5px}.game-over-panel p{color:var(--muted);font-size:12px}
+.block-cell{background:#28243a;border:1px solid #ffffff12}.block-cell.filled{background:linear-gradient(145deg,#d4bfff,#8e70d9);box-shadow:inset 0 0 12px #fff4,0 0 10px #a78bfa55;animation:tile-pop .18s ease both}
+.crash-shake{animation:crash-shake .35s ease}
+@keyframes card-arrive{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes card-reveal{0%{transform:scale(.86) rotateY(0)}55%{transform:scale(1.06) rotateY(12deg)}100%{transform:scale(1) rotateY(0)}}
+@keyframes match-pulse{0%{transform:scale(.9)}55%{transform:scale(1.09)}100%{transform:scale(1)}}
+@keyframes crash-shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+@media(max-width:430px){.memory-mode-grid{grid-template-columns:1fr}.memory-mode-card{min-height:95px}.memory-online-top{gap:4px}.memory-player{padding:7px 5px}.memory-player b{font-size:9px}.memory-turn{font-size:7px}.memory-room-panel,.memory-welcome{padding:22px 15px}}

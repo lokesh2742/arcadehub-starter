@@ -125,6 +125,7 @@ $("friendSearchButton").addEventListener("click",searchPlayer);
 $("friendSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayer();});
 $("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is @"+username);}});
 onAuthStateChanged(auth,async u=>{
+ if(user?.uid&&!u)update(ref(db,"presence/"+user.uid),{state:"offline",lastChanged:Date.now()}).catch(()=>{});
  user=u;stopListeners();username="";friends={};requests={};invites={};presence={};
  $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}

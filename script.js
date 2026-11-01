@@ -199,9 +199,7 @@ $("cancelRoomButton").addEventListener("click", async () => {
   showOnly(modeSelection);
 });
 
-document.querySelectorAll(".game-card[data-game='upcoming']").forEach(card => card.addEventListener("click", () => showToast("This multiplayer game is coming soon!")));
-document.querySelectorAll(".game-card[data-game='memory'],.game-card[data-game='snake'],.game-card[data-game='2048'],.game-card[data-game='blocks'],.game-card[data-game='racer']")
-  .forEach(card => card.addEventListener("click", () => launchMiniGame(card.dataset.game)));
+// Mini-game card interactions are registered in mini-games.js.
 
 // LOCAL GAME MODES
 

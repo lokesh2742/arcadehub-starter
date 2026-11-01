@@ -106,3 +106,10 @@ main{max-width:1160px;margin:auto;padding:0 28px}.hero{min-height:350px;display:
 .piece-row{display:flex;gap:3px;justify-content:center}.piece-row i{width:13px;height:13px;border-radius:3px;background:#ffffff08}.piece-row i.piece-dot{background:linear-gradient(145deg,#d4bfff,#8e70d9);box-shadow:0 0 7px #a78bfa66}
 .block-cell.invalid{animation:invalid-cell .22s ease}
 @keyframes invalid-cell{0%,100%{transform:scale(1)}35%{transform:scale(.8);background:#ff78b755}}
+
+/* Homepage information links */
+.site-footer{gap:16px;flex-wrap:wrap}
+.footer-links{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap}
+.footer-links a{color:#aaa2bd;text-decoration:none;font-size:10px;transition:color .2s}
+.footer-links a:hover{color:#fff}
+@media(max-width:560px){.footer-links{justify-content:flex-start;gap:12px}}

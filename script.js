@@ -81,6 +81,7 @@ function closeGame() {
   gameScreen.setAttribute("aria-hidden","true");
   document.body.style.overflow = "";
   clearTimeout(aiTimer);
+  $("onlineResultModal").hidden = true;
 }
 
 function leaveRoomListener() {
@@ -139,9 +140,11 @@ $("changeModeButton").addEventListener("click", async () => {
 });
 
 $("newRoundButton").addEventListener("click", () => {
-  if (gameMode === "online") startOnlineRound();
+  if (gameMode === "online") requestOnlineRematch();
   else resetLocalRound();
 });
+$("newMatchButton").addEventListener("click", requestOnlineRematch);
+$("exitToMenuButton").addEventListener("click", exitOnlineToMenu);
 
 $("createRoomButton").addEventListener("click", createRoom);
 
@@ -168,15 +171,15 @@ $("cancelRoomButton").addEventListener("click", async () => {
   showOnly(modeSelection);
 });
 
-document.querySelectorAll(".game-card[data-game='coming']")
-  .forEach(card => card.addEventListener("click", () => {
-    showToast("This game is coming soon!");
-  }));
+document.querySelectorAll(".game-card[data-game='upcoming']").forEach(card => card.addEventListener("click", () => showToast("This multiplayer game is coming soon!")));
+document.querySelectorAll(".game-card[data-game='memory'],.game-card[data-game='snake'],.game-card[data-game='2048'],.game-card[data-game='blocks'],.game-card[data-game='racer']")
+  .forEach(card => card.addEventListener("click", () => launchMiniGame(card.dataset.game)));
 
 // LOCAL GAME MODES
 
 function startLocalMode(mode) {
   gameMode = mode;
+  $("onlineResultModal").hidden = true;
   myMark = "X";
   roomCode = "";
   roomRef = null;
@@ -453,7 +456,8 @@ async function createRoom() {
             turn:"X",
             round:1,
             scores:{X:0,O:0},
-            winner:null
+            winner:null,
+            rematchRequests:{X:false,O:false}
           };
         }
 
@@ -477,20 +481,7 @@ async function createRoom() {
     $("roomCodeDisplay").textContent = code;
     showOnly(waitingRoom);
 
-    roomUnsubscribe = onValue(roomRef, snapshot => {
-      const data = snapshot.val();
-
-      if (!data || data.status === "closed") {
-        showToast("The room was closed.");
-        leaveRoomListener();
-        showOnly(onlineSetup);
-        return;
-      }
-
-      if (data.players?.O) {
-        enterOnlineBoard(data);
-      }
-    });
+    listenToRoom();
 
     onDisconnect(ref(db, `rooms/${code}/players/X/connected`))
       .set(false);
@@ -573,7 +564,6 @@ async function joinRoom(code) {
     myMark = "O";
     gameMode = "online";
 
-    enterOnlineBoard(result.snapshot.val());
     listenToRoom();
 
     onDisconnect(ref(db, `rooms/${code}/players/O/connected`))
@@ -619,20 +609,22 @@ function listenToRoom() {
     const data = snapshot.val();
 
     if (!data || data.status === "closed") {
-      showToast("Room closed.");
       leaveRoomListener();
-      showOnly(onlineSetup);
+      $("onlineResultModal").hidden = true;
+      roomRef = null; roomCode = ""; currentRoom = null;
+      closeGame();
+      showToast("The room has ended.");
       return;
     }
-
     currentRoom = data;
-
-    if (data.status === "playing" && data.players?.O) {
-      enterOnlineBoard(data);
-    }
-
-    if (data.status === "finished" || data.status === "playing") {
-      applyRoomState(data);
+    if (data.status === "waiting") { showOnly(waitingRoom); $("roomCodeDisplay").textContent = roomCode; return; }
+    if ((data.status === "playing" || data.status === "finished") && data.players?.O) {
+      $("xName").textContent = data.players.X?.name || "PLAYER 1";
+      $("oName").textContent = data.players.O?.name || "PLAYER 2";
+      $("modeEyebrow").textContent = "ONLINE MULTIPLAYER";
+      $("activeRoomBanner").hidden = false; $("activeRoomCode").textContent = roomCode;
+      $("connectionStatus").textContent = "● Connected to online room";
+      showOnly(boardArea); applyRoomState(data);
     }
 
   }, error => {
@@ -692,6 +684,17 @@ function applyRoomState(data) {
         : "Waiting for your opponent's move…";
   }
 
+  const modal = $("onlineResultModal");
+  if (gameMode === "online" && data.status === "finished") {
+    const name = data.winner ? (data.players?.[data.winner]?.name || "Player") : "";
+    $("resultTitle").textContent = data.winner ? name + " wins!" : "It is a draw!";
+    $("resultMessage").textContent = data.winner ? "Congratulations on the win!" : "Both players played well.";
+    const requests = data.rematchRequests || {};
+    $("rematchNote").textContent = requests[myMark] ? "Waiting for the other player to choose New Match…" : "Both players need to choose New Match.";
+    $("newMatchButton").textContent = requests[myMark] ? "Waiting for opponent…" : "New match ↻";
+    $("newMatchButton").disabled = !!requests[myMark];
+    modal.hidden = false;
+  } else { modal.hidden = true; $("newMatchButton").disabled = false; $("newMatchButton").textContent = "New match ↻"; }
   isApplyingRemote = false;
 }
 
@@ -754,42 +757,33 @@ async function makeOnlineMove(index) {
   }
 }
 
-async function startOnlineRound() {
-  if (!roomRef) {
-    showToast("Room connection is no longer active.");
-    return;
-  }
-
+async function requestOnlineRematch() {
+  if (!roomRef || !currentRoom || currentRoom.status !== "finished") return;
   try {
     const result = await runTransaction(roomRef, room => {
-      if (!room || room.status === "closed") return;
-
-      if (
-        room.players?.X?.id !== userId &&
-        room.players?.O?.id !== userId
-      ) {
-        return;
+      if (!room || room.status !== "finished") return;
+      if (room.players?.X?.id !== userId && room.players?.O?.id !== userId) return;
+      room.rematchRequests = room.rematchRequests || {X:false,O:false};
+      room.rematchRequests[myMark] = true;
+      if (room.rematchRequests.X && room.rematchRequests.O) {
+        room.board = Array(9).fill("");
+        room.turn = "X";
+        room.winner = null;
+        room.round = (room.round || 1) + 1;
+        room.status = "playing";
+        room.rematchRequests = {X:false,O:false};
       }
-
-      if (room.status !== "finished") return;
-
-      room.board = Array(9).fill("");
-      room.turn = "X";
-      room.winner = null;
-      room.round = (room.round || 1) + 1;
-      room.status = "playing";
-
       return room;
     });
-
-    if (!result.committed) {
-      showToast("Finish the current round before starting another.");
-    }
-
-  } catch (error) {
-    console.error(error);
-    showToast("Couldn't start a new round.");
-  }
+    if (!result.committed) showToast("Could not request a new match. Try again.");
+  } catch (error) { console.error(error); showToast("Could not request a new match."); }
+}
+async function startOnlineRound() { return requestOnlineRematch(); }
+async function exitOnlineToMenu() {
+  $("onlineResultModal").hidden = true;
+  if (roomRef) { try { await update(roomRef, {status:"closed"}); } catch (error) { console.warn(error); } }
+  leaveRoomListener(); roomRef = null; roomCode = ""; currentRoom = null;
+  closeGame(); showToast("Back to the main menu.");
 }
 
 async function copyText(value) {

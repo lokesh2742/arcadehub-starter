@@ -26,7 +26,7 @@ window.arcadeHubRequireGoogleSignIn=requireGoogleSignIn;
 
 const $ = id => document.getElementById(id);
 const gameScreen = $("ticTacToeScreen"), nameScreen = $("nameScreen");
-const modeSelection = $("modeSelection"), onlineSetup = $("onlineSetup");
+const modeSelection = $("modeSelection"), onlineSetup = $("onlineSetup"), friendInviteSetup = $("friendInviteSetup");
 const waitingRoom = $("waitingRoom"), boardArea = $("boardArea");
 const cells = [...document.querySelectorAll(".cell")];
 const toast = $("toast");
@@ -60,7 +60,7 @@ function showToast(message) {
 }
 
 function showOnly(screen) {
-  [nameScreen, modeSelection, onlineSetup, waitingRoom, boardArea]
+  [nameScreen, modeSelection, onlineSetup, friendInviteSetup, waitingRoom, boardArea]
     .forEach(el => el.hidden = el !== screen);
 }
 
@@ -108,6 +108,8 @@ $("vsPlayerButton").addEventListener("click", () => startLocalMode("local"));
 $("onlineButton").addEventListener("click",async()=>{try{await requireGoogleSignIn();showOnly(onlineSetup);}catch(error){showToast(error.message||"Sign in to play online.");}});
 
 $("onlineBackButton").addEventListener("click", () => showOnly(modeSelection));
+$("playWithFriendButton").addEventListener("click",async()=>{try{await requireGoogleSignIn();showOnly(friendInviteSetup);window.arcadeHubRenderGameInvites?.("ticFriendInvites","tictactoe");}catch(error){showToast(error.message||"Sign in to invite a friend.");}});
+$("friendInviteBackButton").addEventListener("click",()=>showOnly(modeSelection));
 
 $("changeModeButton").addEventListener("click", async () => {
   if (gameMode === "online" && roomRef) {

@@ -338,3 +338,10 @@ main{width:min(100%,var(--content-width));padding-inline:clamp(18px,4vw,52px)}
 .invite-feedback{margin:8px 0 0}
 .online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#69e6a8;box-shadow:0 0 8px #69e6a8;margin-right:4px}
 @media(max-width:560px){.game-invite-panel{padding:12px}.game-invite-row{align-items:flex-start}.game-invite-row button{padding:8px 10px}}
+
+/* Separate Play with a Friend entry points */
+.no-online-friends{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.no-online-friends .game-help{flex:1;min-width:180px}
+#friendInviteSetup .game-invite-panel{margin-top:22px}
+#friendsButton{cursor:pointer}
+@media(max-width:560px){.no-online-friends{align-items:stretch}.no-online-friends button{width:100%}}

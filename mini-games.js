@@ -69,8 +69,8 @@ async function joinMemoryRoom(code){
  try{
   const candidate=ref(miniDb,"rooms/"+code),snap=await get(candidate);if(!snap.exists())throw Error("Room not found. Check the code.");
   const existing=snap.val();if(existing.type!=="memory"||existing.status!=="waiting"||existing.players?.O)throw Error("This room is full or is for another game.");
-  const joined=await runTransaction(candidate,room=>{if(!room||room.type!=="memory"||room.status!=="waiting"||room.players?.O)return;room.players.O={id:memoryUserId,name:player()};room.status="playing";return room;});
-  if(!joined.committed)throw Error("Someone else has already joined this room.");
+  const joined=await runTransaction(candidate,room=>{if(!room||room.type!=="memory"||room.status!=="waiting")return;if(room.players?.O){if(room.players.O.id===memoryUserId)return room;return;}room.players=room.players||{};room.players.O={id:memoryUserId,name:player()};room.status="playing";return room;});
+  if(!joined.committed){const latest=await get(candidate),state=latest.val();if(state?.players?.O)throw Error("This room already has a second player. Ask the host to create a new room and share its new code.");if(!latest.exists()||state?.status!=="waiting")throw Error("This room is no longer waiting for a player. Ask the host to create a new room.");throw Error("Could not join this room. Check your internet connection and Firebase Realtime Database permissions, then try again.");}
   memoryRoomRef=candidate;memoryMark="O";listenMemoryRoom();
  }catch(e){$("memoryRoomStatus").textContent=e.message||"Could not join room.";$("memoryJoinRoom").disabled=false;}
 }

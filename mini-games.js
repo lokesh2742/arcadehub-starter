@@ -221,3 +221,15 @@ function racer(){
  function draw(){ctx.fillStyle="#111522";ctx.fillRect(0,0,360,500);ctx.fillStyle="#35364a";ctx.fillRect(38,0,284,500);ctx.strokeStyle="#e8dfff99";ctx.lineWidth=4;ctx.setLineDash([26,24]);ctx.lineDashOffset=-s.road;ctx.beginPath();ctx.moveTo(132,0);ctx.lineTo(132,500);ctx.moveTo(226,0);ctx.lineTo(226,500);ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=18;ctx.shadowColor="#8ef0c0";ctx.fillStyle="#8ef0c0";ctx.beginPath();ctx.roundRect(58+s.lane*94,408,52,72,10);ctx.fill();ctx.shadowColor="#ff78b7";ctx.fillStyle="#ff78b7";s.obs.forEach(o=>{ctx.beginPath();ctx.roundRect(58+o.lane*94,o.y,52,66,9);ctx.fill();});ctx.shadowBlur=0;}
  timer=setInterval(()=>{if(s.dead)return;s.tick++;s.road=(s.road+7)%50;if(s.tick%30===0)s.obs.push({lane:Math.floor(Math.random()*3),y:-70});s.obs.forEach(o=>o.y+=7);s.obs=s.obs.filter(o=>o.y<520);if(s.obs.some(o=>o.lane===s.lane&&o.y>350&&o.y<475)){s.dead=true;clearInterval(timer);$("raceCanvas").classList.add("crash-shake");$("miniGameBody").insertAdjacentHTML("beforeend",'<div class="game-over-panel"><h3>CRASH!</h3><p>Distance: '+s.score+'</p><button class="primary-button" id="raceAgain">Race again ↻</button></div>');$("raceAgain").onclick=()=>openGame("racer");return;}if(s.tick%5===0){s.score++;$("raceScore").textContent=s.score;}draw();},35);draw();
 }
+
+
+// Friend invitations launch Memory Match in a room created by the inviter.
+window.arcadeHubStartInvitedMemory=async(code,mark)=>{
+ try{
+  await ensureMemorySignIn();
+  openGame("memory");
+  const candidate=ref(miniDb,"rooms/"+code),snap=await get(candidate),data=snap.val();
+  if(!data||data.type!=="memory"||data.status!=="playing"||data.players?.[mark]?.id!==memoryUserId)throw Error("This Memory Match invitation is no longer valid.");
+  memoryRoomRef=candidate;memoryMark=mark;listenMemoryRoom();
+ }catch(e){console.error("[ArcadeHub] Invited Memory Match could not open:",e);$("miniGameBody").innerHTML='<div class="memory-room-panel"><h2>Could not join game</h2><p class="game-help">'+String(e.message||"Please try again.")+'</p><button class="secondary-button" id="memoryBackToMenu">Back</button></div>';$("memoryBackToMenu").onclick=memoryMenu;}
+};

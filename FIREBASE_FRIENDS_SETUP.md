@@ -44,3 +44,30 @@ Suggested validation:
 6. In Tic Tac Toe → Online Room or Memory Match → Custom Room, use **Invite an online friend**. Offline friends cannot be invited. Accepting an invite launches the game automatically on both devices.
 
 Only Tic Tac Toe and Memory Match currently support direct invitations. Chess, Battleship and Pool are still coming soon.
+
+## Required rule for cross-device username search
+
+The username search reads the exact path `playerDirectory/{username}`. If the directory is not readable to signed-in users, search on the other device will fail even though the username appears on the account that created it. Add the following child under the existing root `rules` object in Realtime Database Rules (merge it with your existing rules; do not replace your existing `rooms` rules):
+
+```json
+"playerDirectory": {
+  ".read": "auth != null",
+  "$username": {
+    ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid && newData.child('username').val() === $username"
+  }
+}
+```
+
+Also make sure the existing rules allow each signed-in user to read/write only their own `playerUsernames/{uid}` mapping. The app repairs a missing directory entry on sign-in, so after publishing the rule, both players should sign out and sign back in once, then search using the username without the `@` (the search box also accepts it).
+
+If search still returns a Firebase `PERMISSION_DENIED` error, the remaining issue is in the database rules for `playerDirectory` or `friendRequests`, not the displayed username. Never enable unrestricted public database read/write.
+
+### Important: accepting an invite
+
+When a recipient accepts a game invitation, the app writes an `accepted_` acknowledgement into the inviter's inbox so the inviter's device can launch the same room. Your `gameInvites/{recipientUid}/{inviteId}` write rule must therefore allow the authenticated recipient to update their own invite and allow the authenticated accepter to write an acknowledgement where `acceptedBy` equals their UID. A suitable child-level condition is:
+
+```json
+".write": "auth != null && (auth.uid === $recipientUid || newData.child('fromUid').val() === auth.uid || newData.child('acceptedBy').val() === auth.uid)"
+```
+
+Keep the parent `gameInvites` read permission restricted to the recipient UID. Do not make the whole invitations tree publicly readable.

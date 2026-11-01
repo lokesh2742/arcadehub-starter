@@ -24,9 +24,13 @@ async function reserveUsername(candidate,u){
 }
 async function ensureProfile(u){
  const profileRef=ref(db,"playerUsernames/"+u.uid),existing=await get(profileRef);
- if(existing.exists()){
-  const saved=String(existing.val().username||"").toLowerCase();
-  if(/^[a-z0-9]{3,20}$/.test(saved)){username=saved;return;}
+ const saved=existing.exists()?String(existing.val().username||"").toLowerCase():"";
+ if(/^[a-z0-9]{3,20}$/.test(saved)){
+  // Repair a missing/stale public directory entry on every sign-in. Older
+  // versions could save the private mapping even when directory creation failed.
+  const repaired=await reserveUsername(saved,u);
+  if(repaired){username=saved;return;}
+  throw Error("Your username is already registered to another account. Change it in Friends to continue.");
  }
  const preferred=makeUsername(u),base=preferred.replace(/[0-9]+$/g,"");
  let candidate="";
@@ -49,8 +53,8 @@ async function changeUsername(){
   const friendUpdates={};Object.keys(friends).forEach(friendUid=>{friendUpdates["friends/"+friendUid+"/"+user.uid+"/username"]=username;});
   if(Object.keys(friendUpdates).length)await update(ref(db),friendUpdates);
   await remove(ref(db,"playerDirectory/"+old)).catch(()=>{});
-  $("myFriendCode").textContent="@"+username;input.value="";
-  say("Username changed to @"+username+". It will stay yours until you change it again.");
+  $("myFriendCode").textContent=username;input.value="";
+  say("Username changed to "+username+". It will stay yours until you change it again.");
  }catch(e){say(e.message||"Could not change username. Please try again.");}
  finally{if(button)button.disabled=false;}
 }
@@ -66,11 +70,11 @@ async function startPresence(){
 function renderFriends(){
  const list=$("friendsList");if(!list)return;
  const entries=Object.entries(friends);
- list.innerHTML=entries.length?entries.map(([uid,f])=>'<div class="friend-row"><span class="friend-avatar">'+esc((f.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(f.name||"Player")+'</b><small>@'+esc(f.username||"player")+' · '+(online(uid)?'<i class="online-dot"></i> Online':'Offline')+'</small></span></div>').join(""):'<p class="game-help">No friends yet. Search for a friend by their unique username.</p>';
+ list.innerHTML=entries.length?entries.map(([uid,f])=>'<div class="friend-row"><span class="friend-avatar">'+esc((f.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(f.name||"Player")+'</b><small>'+esc(f.username||"player")+' · '+(online(uid)?'<i class="online-dot"></i> Online':'Offline')+'</small></span></div>').join(""):'<p class="game-help">No friends yet. Search for a friend by their unique username.</p>';
 }
 function renderInbox(){
  const box=$("friendsInbox");if(!box)return;const rows=[];
- for(const [uid,r] of Object.entries(requests))rows.push('<div class="friend-row"><span class="friend-avatar">+</span><span class="friend-details"><b>'+esc(r.name||"Player")+'</b><small>Friend request · @'+esc(r.username||"player")+'</small></span><button class="primary-button" data-accept-friend="'+esc(uid)+'">Accept</button><button class="secondary-button" data-decline-friend="'+esc(uid)+'">Decline</button></div>');
+ for(const [uid,r] of Object.entries(requests))rows.push('<div class="friend-row"><span class="friend-avatar">+</span><span class="friend-details"><b>'+esc(r.name||"Player")+'</b><small>Friend request · '+esc(r.username||"player")+'</small></span><button class="primary-button" data-accept-friend="'+esc(uid)+'">Accept</button><button class="secondary-button" data-decline-friend="'+esc(uid)+'">Decline</button></div>');
  for(const [id,v] of Object.entries(invites))if(v.status==="pending")rows.push('<div class="friend-row"><span class="friend-avatar">🎮</span><span class="friend-details"><b>'+esc(v.fromName||"Player")+'</b><small>Invited you to '+esc(v.game==="memory"?"Memory Match":"Tic Tac Toe")+'</small></span><button class="primary-button" data-accept-invite="'+esc(id)+'">Play</button><button class="secondary-button" data-decline-invite="'+esc(id)+'">No thanks</button></div>');
  box.innerHTML=rows.length?rows.join(""):'<p class="game-help">Your inbox is clear. Friend requests and game invites will show up here.</p>';
  box.querySelectorAll("[data-accept-friend]").forEach(b=>b.onclick=()=>acceptFriend(b.dataset.acceptFriend));
@@ -84,7 +88,7 @@ function renderGameInvites(containerId,game){
  const box=$(containerId);if(!box)return;
  const entries=Object.entries(friends).filter(([uid])=>online(uid));
  box.innerHTML='<div class="game-invite-heading"><b>Invite an online friend</b><span class="online-count">'+entries.length+' online</span></div>'+
- (entries.length?entries.map(([uid,f])=>'<div class="game-invite-row"><span>'+esc(f.name||"Player")+' <small>@'+esc(f.username||"")+'</small></span><button class="secondary-button" data-game-invite="'+esc(uid)+'">Invite</button></div>').join(""):'<div class="no-online-friends"><p class="game-help">No friends are online right now. You can add another friend or invite them when they come online.</p><button type="button" class="secondary-button" data-add-friend-from-game>Add a friend</button></div>')+
+ (entries.length?entries.map(([uid,f])=>'<div class="game-invite-row"><span>'+esc(f.name||"Player")+' <small>'+esc(f.username||"")+'</small></span><button class="secondary-button" data-game-invite="'+esc(uid)+'">Invite</button></div>').join(""):'<div class="no-online-friends"><p class="game-help">No friends are online right now. You can add another friend or invite them when they come online.</p><button type="button" class="secondary-button" data-add-friend-from-game>Add a friend</button></div>')+
  '<p class="game-help invite-feedback" aria-live="polite"></p>';
  box.querySelector("[data-add-friend-from-game]")?.addEventListener("click",()=>window.arcadeHubOpenFriendSearch?.());
  box.querySelectorAll("[data-game-invite]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await sendInvite(b.dataset.gameInvite,game);box.querySelector(".invite-feedback").textContent="Invitation sent!";}catch(e){box.querySelector(".invite-feedback").textContent=e.message||"Could not send invitation.";}finally{b.disabled=false;}});
@@ -101,7 +105,7 @@ async function acceptFriend(uid){
  }catch(e){say(e.message||"Could not accept request. Check Firebase database rules.");}
 }
 async function searchPlayer(){
- const query=$("friendSearchInput").value.trim().replace(/^@/,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
+ const query=$("friendSearchInput").value.trim().replace(/^@/,"").replace(/\s+/g,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
  if(!/^[a-z0-9]{3,20}$/.test(query)){say("Enter a username with 3–20 letters or numbers.");return;}
  try{
   const snap=await get(ref(db,"playerDirectory/"+query));
@@ -111,8 +115,9 @@ async function searchPlayer(){
   const sent=await get(ref(db,"friendRequests/"+p.uid+"/"+user.uid));
   const incoming=await get(ref(db,"friendRequests/"+user.uid+"/"+p.uid));
   const alreadySent=sent.exists(),hasIncoming=incoming.exists();
-  out.innerHTML='<div class="friend-row"><span class="friend-avatar">'+esc((p.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(p.name||"Player")+'</b><small>@'+esc(p.username||query)+' · '+(online(p.uid)?'<i class="online-dot"></i> Online':'Offline')+'</small></span><button class="primary-button" id="sendFriendRequest" '+(alreadySent||hasIncoming?'disabled':'')+'>'+(alreadySent?"Request sent":hasIncoming?"Accept from Inbox":"Add friend")+'</button></div>';
-  if(!alreadySent&&!hasIncoming)$("sendFriendRequest").onclick=async()=>{try{await set(ref(db,"friendRequests/"+p.uid+"/"+user.uid),{uid:user.uid,name:user.displayName||"Player",username,createdAt:Date.now()});say("Friend request sent to @"+query);$("sendFriendRequest").disabled=true;$("sendFriendRequest").textContent="Sent";}catch(e){say(e.message||"Could not send request. Check Firebase database rules.");}};
+  out.innerHTML='<div class="friend-row"><span class="friend-avatar">'+esc((p.name||"P").charAt(0).toUpperCase())+'</span><span class="friend-details"><b>'+esc(p.name||"Player")+'</b><small>'+esc(p.username||query)+' · '+(online(p.uid)?'<i class="online-dot"></i> Online':'Offline')+'</small></span><button class="primary-button" id="sendFriendRequest" '+(alreadySent?'disabled':'')+'>'+(alreadySent?"Request sent":hasIncoming?"Accept request":"Add friend")+'</button></div>';
+  if(hasIncoming)$("sendFriendRequest").onclick=async()=>{const button=$("sendFriendRequest");button.disabled=true;try{await acceptFriend(p.uid);button.textContent="Friends";}catch(e){button.disabled=false;say(e.message||"Could not accept request.");}};
+  else if(!alreadySent)$("sendFriendRequest").onclick=async()=>{const button=$("sendFriendRequest");button.disabled=true;try{await set(ref(db,"friendRequests/"+p.uid+"/"+user.uid),{uid:user.uid,name:user.displayName||"Player",username,createdAt:Date.now()});say("Friend request sent to "+query);button.textContent="Request sent";}catch(e){button.disabled=false;say(e.message||"Could not send request. Check Firebase database rules.");}};
  }catch(e){say(e.message||"Player search failed. Check Firebase database rules.");}
 }
 async function sendInvite(uid,type){
@@ -159,12 +164,12 @@ $("saveUsernameButton").addEventListener("click",changeUsername);
 $("changeUsernameInput").addEventListener("keydown",e=>{if(e.key==="Enter")changeUsername();});
 $("changeUsernameInput").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20);});
 $("friendSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayer();});
-$("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is @"+username);}});
+$("copyFriendCode").addEventListener("click",async()=>{if(username)try{await navigator.clipboard.writeText(username);say("Username copied.");}catch{say("Your username is "+username);}});
 onAuthStateChanged(auth,async u=>{
  if(user?.uid&&!u)update(ref(db,"presence/"+user.uid),{state:"offline",lastChanged:Date.now()}).catch(()=>{});
  user=u;stopListeners();username="";friends={};requests={};invites={};presence={};
  $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}
- try{await ensureProfile(u);$("myFriendCode").textContent="@"+username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
+ try{await ensureProfile(u);$("myFriendCode").textContent=username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
  catch(e){$("myFriendCode").textContent="Username unavailable";say("Username setup failed: "+(e.message||"Check your Firebase connection and Realtime Database rules."));console.error("ArcadeHub username setup failed:",e);}
 });

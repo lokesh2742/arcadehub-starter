@@ -54,7 +54,7 @@ async function createMemoryRoom(){
  $("memoryCreateRoom").disabled=true;
  try{
   let code="",ok=false;
-  for(let n=0;n<5&&!ok;n++){code=makeRoomCode();const candidate=ref(miniDb,"rooms/"+code);const r=await runTransaction(candidate,old=>old===null?{type:"memory",status:"waiting",players:{X:{id:memoryUserId,name:player()},O:null},deck:shuffledDeck(),matched:[],picks:[],turn:"X",scores:{X:0,O:0},moves:0}:undefined);if(r.committed){memoryRoomRef=candidate;ok=true;}}
+  for(let n=0;n<5&&!ok;n++){code=makeRoomCode();const candidate=ref(miniDb,"rooms/"+code);const r=await runTransaction(candidate,old=>old===null?{type:"memory",status:"waiting",players:{X:{id:memoryUserId,name:player()},O:null},deck:shuffledDeck(),matched:[],picks:[],turn:"X",scores:{X:0,O:0},moves:0,phase:"ready"}:undefined);if(r.committed){memoryRoomRef=candidate;ok=true;}}
   if(!ok)throw Error("Could not create a room. Try again.");
   memoryMark="X";$("miniGameBody").innerHTML='<div class="memory-room-panel"><p class="eyebrow">ROOM CREATED</p><h2>Invite your opponent.</h2><div class="memory-room-code" id="memoryRoomCode">'+code+'</div><button class="secondary-button" id="memoryCopyCode">Copy room code</button><div class="waiting-indicator"><i></i> Waiting for your friend to join…</div><button class="text-button" id="memoryCancelRoom">Cancel room</button></div>';
   $("memoryCopyCode").onclick=()=>navigator.clipboard?.writeText(code).then(()=>{$("memoryCopyCode").textContent="Copied ✓";}).catch(()=>{});
@@ -125,20 +125,53 @@ function renderOnlineMemory(data){
  if(finished)$("memoryNewRoom").onclick=()=>{stopRoom();memoryRoomSetup();};
 }
 async function playOnlineMemory(index){
- if(!memoryRoomRef||!memoryRoom||memoryRoom.status!=="playing"||memoryRoom.turn!==memoryMark||memoryRoom.phase==="resolving"||(memoryRoom.picks||[]).includes(index)||(memoryRoom.matched||[]).includes(index))return;
- await runTransaction(memoryRoomRef,room=>{if(!room||room.status!=="playing"||room.turn!==memoryMark||room.phase==="resolving"||(room.picks||[]).includes(index)||(room.matched||[]).includes(index))return;room.picks=room.picks||[];room.picks.push(index);room.moves=(room.moves||0)+1;if(room.picks.length===2)room.phase="resolving";return room;});
+ if(!memoryRoomRef||!memoryRoom||memoryRoom.status!=="playing")return;
+ if(memoryRoom.turn!==memoryMark||memoryRoom.phase==="resolving")return;
+ const deck=Array.isArray(memoryRoom.deck)?memoryRoom.deck:[];
+ const picks=Array.isArray(memoryRoom.picks)?memoryRoom.picks:[];
+ const matched=Array.isArray(memoryRoom.matched)?memoryRoom.matched:[];
+ if(!Number.isInteger(index)||index<0||index>=deck.length||picks.includes(index)||matched.includes(index))return;
+ try{
+  await runTransaction(memoryRoomRef,room=>{
+   const current=room===null?memoryRoom:room;
+   if(!current||current.status!=="playing"||current.turn!==memoryMark||current.phase==="resolving")return;
+   const currentDeck=Array.isArray(current.deck)?current.deck:[];
+   const currentPicks=Array.isArray(current.picks)?current.picks:[];
+   const currentMatched=Array.isArray(current.matched)?current.matched:[];
+   if(!Number.isInteger(index)||index<0||index>=currentDeck.length||currentPicks.includes(index)||currentMatched.includes(index))return;
+   if(currentPicks.length>=2)return;
+   return {...current,picks:[...currentPicks,index],moves:(Number(current.moves)||0)+1,phase:currentPicks.length===1?"resolving":"ready"};
+  });
+ }catch(error){
+  console.error("[ArcadeHub] Memory Match card selection failed:",error);
+  $("memoryRoomStatus")?.textContent;
+ }
 }
 async function resolveMemoryPair(){
- resolveTimer=null;if(!memoryRoomRef)return;
- await runTransaction(memoryRoomRef,room=>{
-  if(!room||room.status!=="playing"||room.phase!=="resolving"||room.picks?.length!==2)return;
-  const [a,b]=room.picks;
-  if(room.deck[a]===room.deck[b]){room.matched=[...(room.matched||[]),a,b];room.scores[room.turn]=(room.scores[room.turn]||0)+1;}
-  else room.turn=room.turn==="X"?"O":"X";
-  room.picks=[];room.phase="ready";
-  if(room.matched.length===room.deck.length)room.status="finished";
-  return room;
- });
+ resolveTimer=null;
+ if(!memoryRoomRef||!memoryRoom)return;
+ try{
+  await runTransaction(memoryRoomRef,room=>{
+   const current=room===null?memoryRoom:room;
+   if(!current||current.status!=="playing"||current.phase!=="resolving")return;
+   const deck=Array.isArray(current.deck)?current.deck:[];
+   const picks=Array.isArray(current.picks)?current.picks:[];
+   const matched=Array.isArray(current.matched)?current.matched:[];
+   const scores={X:0,O:0,...(current.scores||{})};
+   if(deck.length===0||picks.length!==2)return;
+   const [a,b]=picks;
+   if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0||a>=deck.length||b>=deck.length||a===b)return;
+   const isMatch=deck[a]===deck[b];
+   const nextMatched=isMatch?[...new Set([...matched,a,b])]:matched;
+   const nextTurn=isMatch?current.turn:(current.turn==="X"?"O":"X");
+   const next={...current,scores,picks:[],matched:nextMatched,phase:"ready",turn:nextTurn};
+   if(isMatch)scores[current.turn]=(Number(scores[current.turn])||0)+1;
+   if(nextMatched.length===deck.length)next.status="finished";
+   return next;
+  });
+ }catch(error){
+  console.error("[ArcadeHub] Memory Match pair resolution failed:",error);
+ }
 }
 
 // 2048: smooth tile entry and keyboard/swipe support.

@@ -66,13 +66,43 @@ async function joinMemoryRoom(code){
  try{await ensureMemorySignIn();}catch(e){$("memoryRoomStatus").textContent=e.message||"Sign in to play online.";return;}
  if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){$("memoryRoomStatus").textContent="Enter a valid six-character code.";return;}
  $("memoryJoinRoom").disabled=true;
+ let stage="checking room";
  try{
-  const candidate=ref(miniDb,"rooms/"+code),snap=await get(candidate);if(!snap.exists())throw Error("Room not found. Check the code.");
-  const existing=snap.val();if(existing.type!=="memory"||existing.status!=="waiting"||existing.players?.O)throw Error("This room is full or is for another game.");
-  const joined=await runTransaction(candidate,room=>{if(!room||room.type!=="memory"||room.status!=="waiting")return;if(room.players?.O){if(room.players.O.id===memoryUserId)return room;return;}room.players=room.players||{};room.players.O={id:memoryUserId,name:player()};room.status="playing";return room;});
-  if(!joined.committed){const latest=await get(candidate),state=latest.val();if(state?.players?.O)throw Error("This room already has a second player. Ask the host to create a new room and share its new code.");if(!latest.exists()||state?.status!=="waiting")throw Error("This room is no longer waiting for a player. Ask the host to create a new room.");throw Error("Could not join this room. Check your internet connection and Firebase Realtime Database permissions, then try again.");}
+  const candidate=ref(miniDb,"rooms/"+code);
+  const snap=await get(candidate);
+  if(!snap.exists())throw Error("Room not found. Check the code.");
+  const existing=snap.val();
+  if(existing.type!=="memory"||existing.status!=="waiting"||existing.players?.O)throw Error("This room is full or is for another game.");
+  stage="joining room (Realtime Database transaction)";
+  const joined=await runTransaction(candidate,room=>{
+   if(!room||room.type!=="memory"||room.status!=="waiting")return;
+   if(room.players?.O){if(room.players.O.id===memoryUserId)return room;return;}
+   room.players=room.players||{};
+   room.players.O={id:memoryUserId,name:player()};
+   room.status="playing";
+   return room;
+  });
+  if(!joined.committed){
+   stage="checking room after an uncommitted transaction";
+   const latest=await get(candidate),state=latest.val();
+   console.error("[ArcadeHub] Memory Match join transaction did not commit",{
+    roomCode:code,stage,exists:latest.exists(),roomType:state?.type??null,
+    roomStatus:state?.status??null,secondPlayerPresent:!!state?.players?.O,
+    transactionCommitted:joined.committed
+   });
+   if(state?.players?.O)throw Error("This room already has a second player. Ask the host to create a new room and share its new code.");
+   if(!latest.exists()||state?.status!=="waiting")throw Error("This room is no longer waiting for a player. Ask the host to create a new room.");
+   throw Error("Firebase did not commit the join. Open the browser console (F12) for the diagnostic details, then share them with me.");
+  }
   memoryRoomRef=candidate;memoryMark="O";listenMemoryRoom();
- }catch(e){$("memoryRoomStatus").textContent=e.message||"Could not join room.";$("memoryJoinRoom").disabled=false;}
+ }catch(e){
+  console.error("[ArcadeHub] Memory Match join failed",{
+   roomCode:code,stage,errorCode:e?.code||null,errorMessage:e?.message||String(e),
+   databasePath:"rooms/"+code
+  },e);
+  $("memoryRoomStatus").textContent=e.message||"Could not join room.";
+  $("memoryJoinRoom").disabled=false;
+ }
 }
 function listenMemoryRoom(){
  if(memoryRoomOff)memoryRoomOff();

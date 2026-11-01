@@ -3,12 +3,12 @@ import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.
 import {getDatabase,ref,get,set,update,remove,onValue,runTransaction,push,onDisconnect} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 const $=id=>document.getElementById(id),app=getApps().find(a=>a.name==="[DEFAULT]");
 const auth=app?getAuth(app):null,db=app?getDatabase(app):null;
-let user=null,username="",friends={},requests={},invites={},presence={},unsubs=[],presenceOff=null,launched={};
+let user=null,username="",friends={},requests={},invites={},presence={},presenceWatchers={},unsubs=[],presenceOff=null,launched={};
 const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const say=s=>{if($("friendsStatus"))$("friendsStatus").textContent=s;};
 const online=uid=>presence[uid]?.state==="online";
-function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];if(presenceOff){presenceOff();presenceOff=null;}}
+function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];presenceWatchers={};if(presenceOff){presenceOff();presenceOff=null;}}
 function makeUsername(u){
  const base=(u.displayName||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,".").replace(/^\.|\.$/g,"").slice(0,18)||"player";
  return (base+"."+u.uid.slice(-6)).toLowerCase();
@@ -19,7 +19,7 @@ async function ensureProfile(u){
  username=makeUsername(u);
  const directoryRef=ref(db,"playerDirectory/"+username);
  const result=await runTransaction(directoryRef,old=>old===null?{uid:u.uid,name:u.displayName||"ArcadeHub Player",username,createdAt:Date.now()}:undefined);
- if(!result.committed)throw Error("That username is already taken. Please sign in again or contact support.");
+ if(!result.committed){const current=await get(directoryRef);if(!current.exists()||current.val().uid!==u.uid)throw Error("That username is already taken. Please sign in again or contact support.");}
  await set(profileRef,{username});
 }
 async function startPresence(){
@@ -105,12 +105,10 @@ function launch(game,code,mark){const key=game+":"+code;if(launched[key])return;
 function listenSocial(){
  stopListeners();
  const add=(path,cb)=>unsubs.push(onValue(ref(db,path),snap=>cb(snap.val()||{}),e=>say(e.message||"Could not load social data.")));
- add("friends/"+user.uid,data=>{friends=data;renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});
+ add("friends/"+user.uid,data=>{friends=data;Object.keys(friends).forEach(uid=>{if(!presenceWatchers[uid]){const off=onValue(ref(db,"presence/"+uid),snap=>{presence[uid]=snap.val()||{};renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});presenceWatchers[uid]=off;unsubs.push(off);}});renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");});
  add("friendRequests/"+user.uid,data=>{requests=data;renderInbox();});
  add("gameInvites/"+user.uid,data=>{invites=data;renderInbox();});
- const ids=()=>Object.keys(friends);
- ids().forEach(uid=>unsubs.push(onValue(ref(db,"presence/"+uid),snap=>{presence[uid]=snap.val()||{};renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");})));
- unsubs.push(onValue(ref(db,"presence"),snap=>{presence=snap.val()||{};renderFriends();renderGameInvites("ticFriendInvites","tictactoe");renderGameInvites("memoryFriendInvites","memory");},e=>say(e.message||"Could not load online friends.")));
+
 }
 function listenAccepted(){
  unsubs.push(onValue(ref(db,"gameInvites/"+user.uid),snap=>{const data=snap.val()||{};Object.entries(data).forEach(([id,v])=>{if(id.startsWith("accepted_")&&v.status==="accepted"&&v.roomCode){launch(v.game,v.roomCode,"O");remove(ref(db,"gameInvites/"+user.uid+"/"+id)).catch(e=>console.warn("Could not clear handled invite",e));}});}));
@@ -129,6 +127,6 @@ onAuthStateChanged(auth,async u=>{
  user=u;stopListeners();username="";friends={};requests={};invites={};presence={};
  $("myFriendCode").textContent=u?"Setting up your username…":"Sign in with Google to get your username";
  if(!u){say("Sign in with Google to use friends and invitations.");renderFriends();renderInbox();return;}
- try{await ensureProfile(u);$("myFriendCode").textContent="@"+username;await startPresence();listenSocial();listenAccepted();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
+ try{await ensureProfile(u);$("myFriendCode").textContent="@"+username;listenSocial();listenAccepted();await startPresence();renderFriends();renderInbox();say("Your unique username is ready. Share it so friends can find you.");}
  catch(e){say(e.message||"Could not set up your player profile.");}
 });

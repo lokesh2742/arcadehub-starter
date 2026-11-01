@@ -23,7 +23,7 @@ const spawn = index => {
   return spots[index % spots.length];
 };
 function publicPlayer(p) {
-  return { id: p.id, name: p.name, x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, health: p.health, score: p.score, deaths: p.deaths, weapon: p.weapon, ammo: p.ammo };
+  return { id: p.id, name: p.name, x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, health: p.health, score: p.score, deaths: p.deaths, weapon: p.weapon, ammo: p.ammo, reserve: p.reserve };
 }
 function send(ws, type, data = {}) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, ...data }));

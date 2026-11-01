@@ -3,7 +3,16 @@ import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/1
 import { getDatabase, ref, get, runTransaction, onValue, update } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 const $ = id => document.getElementById(id);
 let timer=null, cleanup=null, active="", memoryRoomRef=null, memoryRoomOff=null, memoryRoom=null, memoryMark="", memoryUserId=null, resolveTimer=null;
-const firebaseConfig={apiKey:"AIzaSyDAFaBhWhVwkxkU7KH8n-IsGICFzYUl4",authDomain:"arcadehub-3f060.firebaseapp.com",databaseURL:"https://arcadehub-3f060-default-rtdb.firebaseio.com",projectId:"arcadehub-3f060",storageBucket:"arcadehub-3f060.firebasestorage.app",messagingSenderId:"777660361833",appId:"1:777660361833:web:623f0ce7d78a4733ac46f8"};
+const firebaseConfig = {
+  apiKey: "AIzaSyDAFaBhBwHvWkxkU7KH8n-IsGICwFzYUl4",
+  authDomain: "arcadehub-3f060.firebaseapp.com",
+  databaseURL: "https://arcadehub-3f060-default-rtdb.firebaseio.com",
+  projectId: "arcadehub-3f060",
+  storageBucket: "arcadehub-3f060.firebasestorage.app",
+  messagingSenderId: "777660361833",
+  appId: "1:777660361833:web:623f0ce7d78a4733ac46f8",
+  measurementId: "G-Q1GX1EEMWX"
+};
 let miniDb=null, miniAuthReady=false;
 try{const app=getApps().find(a=>a.name==="ArcadeHubMini")||initializeApp(firebaseConfig,"ArcadeHubMini");const auth=getAuth(app);miniDb=getDatabase(app);await signInAnonymously(auth);memoryUserId=auth.currentUser.uid;miniAuthReady=true;}catch(e){console.warn("Online Memory Match unavailable:",e);}
 const player=()=>{try{return localStorage.getItem("arcadehubPlayerName")||"Player";}catch{return"Player";}};

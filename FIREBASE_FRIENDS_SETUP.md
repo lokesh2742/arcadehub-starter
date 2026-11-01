@@ -1,41 +1,46 @@
-# ArcadeHub Friends and Game Invitations — Firebase setup
+# ArcadeHub Friends, Usernames and Online Invitations
 
-The friends feature uses the existing Firebase Authentication user ID and Realtime Database.
+## Username is the Friend ID
 
-## What the feature stores
+ArcadeHub no longer creates a separate random Friend ID. Each Google account receives one stable, unique username based on its Google display name plus a short suffix from its Firebase UID (for example, `@alex.12ab34`). This avoids collisions when multiple players have the same display name. The username is stable across devices because it is stored against the Firebase Authentication UID.
 
-- `playerDirectory/{friendCode}`: a public, searchable player card (display name, Friend ID and Firebase UID).
-- `playerCodes/{uid}`: the signed-in player's own Friend ID mapping.
-- `friends/{uid}/{friendUid}`: a friend-list entry.
+Database paths:
+- `playerDirectory/{username}`: searchable public username card (UID, display name, username only).
+- `playerUsernames/{uid}`: the account's username mapping.
+- `presence/{uid}`: live online/offline status.
+- `friends/{uid}/{friendUid}`: accepted friend list.
 - `friendRequests/{recipientUid}/{senderUid}`: incoming friend requests.
-- `gameInvites/{recipientUid}/{inviteId}`: incoming game invitations and their status.
-- `rooms/{roomCode}`: the same Tic Tac Toe / Memory Match room data used by the games.
+- `gameInvites/{recipientUid}/{inviteId}`: game invitations.
+- `rooms/{roomCode}`: Tic Tac Toe / Memory Match room data.
 
-Friend IDs are randomly generated 8-character codes. Searching is an exact code lookup, not a browse-all-players directory.
+## Firebase Realtime Database rules
 
-## Required Realtime Database access
+Open Firebase Console → Realtime Database → Rules. Preserve the existing room validation and add narrowly scoped permissions for the new paths. Do not use unrestricted public read/write rules.
 
-Open Firebase Console → Realtime Database → Rules. The database must allow authenticated players to:
+The app needs authenticated access to:
+1. Read a username directory entry by exact username; create a directory entry only when its `uid` matches `auth.uid`.
+2. Read/write only the caller's `playerUsernames/{auth.uid}` mapping.
+3. Write/read the caller's `presence/{auth.uid}` record and read friend presence records.
+4. Read the caller's friend list; create reciprocal friend entries as part of accepting an incoming request.
+5. Read incoming requests/invites addressed to the caller; send a request/invite only with the caller's UID as sender.
+6. Preserve existing game-room permissions and validate membership for both players.
 
-1. Read a player-directory entry by its Friend ID and create their own directory entry.
-2. Read/write their own Friend ID mapping.
-3. Read their own friend list; add a reciprocal friend entry only when accepting a request.
-4. Read incoming requests and invites; send requests/invites to another user's inbox; accept or decline items addressed to them.
-5. Create/read/update the game rooms they participate in.
+Suggested validation:
+- Directory username must match the path and directory `uid` must equal `auth.uid` on creation.
+- Presence writes must be restricted to `presence/{auth.uid}`.
+- A friend request's sender UID must equal `auth.uid`.
+- An invitation's sender UID must equal `auth.uid`; recipient is the path owner.
+- Never publish email addresses or private account information in the directory or presence records.
 
-**Do not switch the database to unrestricted public read/write just to make this work.** The exact rules depend on the rules already protecting your Tic Tac Toe and Memory Match rooms. Preserve those room protections and add narrowly scoped rules for the paths above. In particular, validate that a directory entry's `uid` matches `auth.uid`, that a friend request's sender matches `auth.uid`, and that an invitation's sender matches `auth.uid`. Public directory reads expose only the player's display name, Friend ID and UID; do not put email addresses or private account data there.
+**Important:** GitHub Pages cannot publish Firebase security rules. If the rules do not permit these paths, search, friend requests, presence or invitations will fail with a Firebase permission error. The app intentionally does not weaken your database security.
 
-The app cannot publish Firebase security rules through GitHub Pages. If the database currently uses locked rules, friend search and inbox writes will show a Firebase permission error until the rules are updated.
+## How it works
 
-## First-time use
+1. Deploy the site and hard-refresh (Ctrl + Shift + R).
+2. Sign in with Google on each device.
+3. Open Friends and share the displayed `@username`; search using the exact username and send a request.
+4. The other player accepts the request in Inbox.
+5. A player must be signed in with ArcadeHub open to appear Online.
+6. In Tic Tac Toe → Online Room or Memory Match → Custom Room, use **Invite an online friend**. Offline friends cannot be invited. Accepting an invite launches the game automatically on both devices.
 
-1. Deploy the website update to GitHub Pages and hard-refresh (Ctrl + Shift + R).
-2. Sign in with Google.
-3. Open **Friends**. Your Friend ID is generated automatically; copy and share it.
-4. Use **Find players** to search for a friend's exact 8-character ID.
-5. The recipient accepts the request in **Inbox**. Once connected, either player can send a Tic Tac Toe or Memory Match invitation from the friend list.
-6. The accepting player creates the room in the background. Both players are routed into the game without entering a room code.
-
-## Current scope
-
-Direct invitations are wired for the two online games currently implemented: Tic Tac Toe and Memory Match. Chess, Battleship and Pool remain coming-soon placeholders. This first version's inbox handles friend requests and game invitations; it is structured so future notification types can be added.
+Only Tic Tac Toe and Memory Match currently support direct invitations. Chess, Battleship and Pool are still coming soon.

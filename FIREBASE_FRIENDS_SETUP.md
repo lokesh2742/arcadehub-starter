@@ -2,7 +2,7 @@
 
 ## Username is the Friend ID
 
-ArcadeHub no longer creates a separate random Friend ID. Each Google account receives one stable, unique username based on its Google display name plus a short suffix from its Firebase UID. Usernames use only letters, numbers and hyphens so they are valid Realtime Database keys (for example, `@alex-12ab34`). This avoids collisions when multiple players have the same display name. The username is stable across devices because it is stored against the Firebase Authentication UID.
+ArcadeHub no longer creates a separate random Friend ID. Each Google account receives one stable, unique username based on the first name in its Google display name plus a numeric suffix (for example, `lokesh4077`). Usernames use only lowercase letters and numbers so they are valid Realtime Database keys. Players can change their username from the Friends panel; it remains unchanged across devices and sign-ins until they change it again. Username search is case-insensitive. This avoids collisions when multiple players have the same display name. The username is stable across devices because it is stored against the Firebase Authentication UID.
 
 Database paths:
 - `playerDirectory/{username}`: searchable public username card (UID, display name, username only).

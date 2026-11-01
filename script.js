@@ -54,6 +54,34 @@ let roomCode = "", roomRef = null;
 let roomUnsubscribe = null, currentRoom = null;
 let toastTimer, aiTimer, isApplyingRemote = false;
 
+
+function setPlayerName(name) {
+  playerName = name.trim().slice(0,16);
+  try { localStorage.setItem("arcadehubPlayerName", playerName); } catch (error) { console.warn("Could not save profile on this device.",error); }
+  $("profileButtonName").textContent = playerName;
+  $("profileAvatar").textContent = playerName.charAt(0).toUpperCase();
+  $("profileLargeAvatar").textContent = playerName.charAt(0).toUpperCase();
+  $("welcomeName").textContent = playerName.toUpperCase();
+  $("playerName").value = playerName;
+}
+try { playerName = localStorage.getItem("arcadehubPlayerName") || ""; } catch {}
+if (playerName) { setPlayerName(playerName); $("welcomeOverlay").hidden = true; }
+else { $("welcomeOverlay").hidden = false; }
+$("welcomeForm").addEventListener("submit", e => {
+  e.preventDefault(); const value = $("welcomeNameInput").value.trim(); if (!value) return;
+  setPlayerName(value); $("welcomeOverlay").hidden = true;
+});
+$("profileButton").addEventListener("click", () => {
+  $("profileNameInput").value = playerName;
+  $("profileOverlay").hidden = false;
+});
+$("closeProfileButton").addEventListener("click", () => $("profileOverlay").hidden = true);
+$("profileOverlay").addEventListener("click", e => { if (e.target === $("profileOverlay")) $("profileOverlay").hidden = true; });
+$("profileForm").addEventListener("submit", e => {
+  e.preventDefault(); const value = $("profileNameInput").value.trim(); if (!value) return;
+  setPlayerName(value); $("profileOverlay").hidden = true; showToast("Your profile name has been updated.");
+});
+
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
@@ -70,9 +98,9 @@ function openGame() {
   gameScreen.classList.add("open");
   gameScreen.setAttribute("aria-hidden","false");
   document.body.style.overflow = "hidden";
-  showOnly(nameScreen);
+  showOnly(playerName ? modeSelection : nameScreen);
   $("playerName").value = playerName;
-  setTimeout(() => $("playerName").focus(), 100);
+  if (!playerName) setTimeout(() => $("playerName").focus(), 100);
 }
 
 function closeGame() {
@@ -108,12 +136,12 @@ $("nameForm").addEventListener("submit", e => {
   const name = $("playerName").value.trim();
   if (!name) return;
 
-  playerName = name.slice(0,16);
-  $("welcomeName").textContent = playerName.toUpperCase();
+  setPlayerName(name);
+  $("welcomeOverlay").hidden = true;
   showOnly(modeSelection);
 });
 
-$("editNameButton").addEventListener("click", () => showOnly(nameScreen));
+$("editNameButton").addEventListener("click", () => { $("playerName").value = playerName; showOnly(nameScreen); });
 
 $("vsAiButton").addEventListener("click", () => startLocalMode("ai"));
 $("vsPlayerButton").addEventListener("click", () => startLocalMode("local"));

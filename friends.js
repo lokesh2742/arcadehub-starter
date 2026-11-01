@@ -12,7 +12,7 @@ const say=s=>{if($("friendsStatus"))$("friendsStatus").textContent=s;};
 const online=uid=>presence[uid]?.state==="online";
 function stopListeners(){unsubs.forEach(fn=>fn());unsubs=[];presenceWatchers={};if(presenceOff){presenceOff();presenceOff=null;}}
 function makeUsername(u){
- const base=(u.displayName||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,12)||"player";
+ const base=((u.displayName||"player").trim().split(/\s+/)[0]||"player").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,12)||"player";
  let hash=0;for(const ch of u.uid)hash=(hash*31+ch.charCodeAt(0))%9000;
  return base+(1000+hash);
 }
@@ -46,6 +46,8 @@ async function changeUsername(){
   await set(ref(db,"playerUsernames/"+user.uid),{username:candidate});
   username=candidate;
   await update(ref(db,"presence/"+user.uid),{username});
+  const friendUpdates={};Object.keys(friends).forEach(friendUid=>{friendUpdates["friends/"+friendUid+"/"+user.uid+"/username"]=username;});
+  if(Object.keys(friendUpdates).length)await update(ref(db),friendUpdates);
   await remove(ref(db,"playerDirectory/"+old)).catch(()=>{});
   $("myFriendCode").textContent="@"+username;input.value="";
   say("Username changed to @"+username+". It will stay yours until you change it again.");
@@ -100,7 +102,7 @@ async function acceptFriend(uid){
 }
 async function searchPlayer(){
  const query=$("friendSearchInput").value.trim().replace(/^@/,"").toLowerCase(),out=$("friendSearchResult");out.innerHTML="";
- if(!/^[a-z0-9]{3,20}$/.test(query)){say("Enter the player's username (for example, @alex-12ab34).");return;}
+ if(!/^[a-z0-9]{3,20}$/.test(query)){say("Enter a username with 3–20 letters or numbers.");return;}
  try{
   const snap=await get(ref(db,"playerDirectory/"+query));
   if(!snap.exists()){out.innerHTML='<p class="game-help">No player found. Check the username and try again.</p>';return;}

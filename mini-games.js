@@ -119,10 +119,17 @@ function listenMemoryRoom(){
  });
 }
 function renderOnlineMemory(data){
- const scores=data.scores||{X:0,O:0},mine=memoryMark===data.turn,finished=data.status==="finished";
- $("miniGameBody").innerHTML='<div class="memory-online-top"><div class="memory-player '+(data.turn==="X"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+(data.players?.X?.name||"Player 1")+'</b><strong>'+scores.X+'</strong></div><div class="memory-turn">'+(finished?"ROUND COMPLETE":(mine?"YOUR TURN":"OPPONENT’S TURN"))+'</div><div class="memory-player '+(data.turn==="O"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+(data.players?.O?.name||"Player 2")+'</b><strong>'+scores.O+'</strong></div></div><div class="memory-room-strip">ROOM <b>'+(memoryRoomRef.key||"")+'</b> · '+(data.moves||0)+' turns</div><div class="mini-board memory-board">'+data.deck.map((v,i)=>{const shown=(data.picks||[]).includes(i)||(data.matched||[]).includes(i);return '<button class="memory-card '+(shown?'revealed ':'')+((data.matched||[]).includes(i)?'matched':'')+'" data-i="'+i+'" '+(shown||finished||data.phase==="resolving"||!mine?'disabled':'')+'>'+(shown?v:"?")+'</button>';}).join("")+'</div><p class="game-help">'+(finished?"The match is complete. Go back to the arcade or start a fresh room.":(mine?"Find a pair. Matching pairs earn a point and another turn.":"Wait for your opponent to finish their turn."))+'</p>'+(finished?'<button class="primary-button" id="memoryNewRoom">New room ↻</button>':'');
+ const scores={X:0,O:0,...(data.scores||{})},mine=memoryMark===data.turn,finished=data.status==="finished";
+ const xName=data.players?.X?.name||"Player 1",oName=data.players?.O?.name||"Player 2";
+ const winner=scores.X===scores.O?null:(scores.X>scores.O?"X":"O");
+ const resultTitle=winner?(winner==="X"?xName:oName)+" wins!":"It's a draw!";
+ const resultCopy=winner?"Congratulations on the win!": "Both players finished with the same score.";
+ $("miniGameBody").innerHTML='<div class="memory-online-top"><div class="memory-player '+(data.turn==="X"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+xName+'</b><strong>'+scores.X+'</strong></div><div class="memory-turn">'+(finished?"ROUND COMPLETE":(mine?"YOUR TURN":"OPPONENT’S TURN"))+'</div><div class="memory-player '+(data.turn==="O"&&!finished?'your-turn':'')+'"><span>✦</span><b>'+oName+'</b><strong>'+scores.O+'</strong></div></div><div class="memory-room-strip">ROOM <b>'+(memoryRoomRef.key||"")+'</b> · '+(data.moves||0)+' turns</div><div class="mini-board memory-board">'+data.deck.map((v,i)=>{const shown=(data.picks||[]).includes(i)||(data.matched||[]).includes(i);return '<button class="memory-card '+(shown?'revealed ':'')+((data.matched||[]).includes(i)?'matched':'')+'" data-i="'+i+'" '+(shown||finished||data.phase==="resolving"||!mine?'disabled':'')+'>'+(shown?v:"?")+'</button>';}).join("")+'</div>'+(finished?'<div class="game-over-panel memory-result"><div class="win-medal">✦</div><p class="eyebrow">MATCH COMPLETE</p><h3>'+resultTitle+'</h3><p>'+resultCopy+'</p><div class="memory-final-score"><span>'+xName+' <b>'+scores.X+'</b></span><span>'+oName+' <b>'+scores.O+'</b></span></div><button class="primary-button" id="memoryNewRoom">Play again ↻</button><button class="secondary-button" id="memoryExitRoom">Back to games</button></div>':'<p class="game-help">'+(mine?"Find a pair. Matching pairs earn a point and another turn.":"Wait for your opponent to finish their turn.")+'</p>');
  $("miniGameBody").querySelectorAll(".memory-card").forEach(b=>b.onclick=()=>playOnlineMemory(+b.dataset.i));
- if(finished)$("memoryNewRoom").onclick=()=>{stopRoom();memoryRoomSetup();};
+ if(finished){
+  $("memoryNewRoom").onclick=()=>{stopRoom();memoryRoomSetup();};
+  $("memoryExitRoom").onclick=()=>{stopRoom();memoryMenu();};
+ }
 }
 async function playOnlineMemory(index){
  if(!memoryRoomRef||!memoryRoom||memoryRoom.status!=="playing")return;
@@ -214,3 +221,15 @@ function racer(){
  function draw(){ctx.fillStyle="#111522";ctx.fillRect(0,0,360,500);ctx.fillStyle="#35364a";ctx.fillRect(38,0,284,500);ctx.strokeStyle="#e8dfff99";ctx.lineWidth=4;ctx.setLineDash([26,24]);ctx.lineDashOffset=-s.road;ctx.beginPath();ctx.moveTo(132,0);ctx.lineTo(132,500);ctx.moveTo(226,0);ctx.lineTo(226,500);ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=18;ctx.shadowColor="#8ef0c0";ctx.fillStyle="#8ef0c0";ctx.beginPath();ctx.roundRect(58+s.lane*94,408,52,72,10);ctx.fill();ctx.shadowColor="#ff78b7";ctx.fillStyle="#ff78b7";s.obs.forEach(o=>{ctx.beginPath();ctx.roundRect(58+o.lane*94,o.y,52,66,9);ctx.fill();});ctx.shadowBlur=0;}
  timer=setInterval(()=>{if(s.dead)return;s.tick++;s.road=(s.road+7)%50;if(s.tick%30===0)s.obs.push({lane:Math.floor(Math.random()*3),y:-70});s.obs.forEach(o=>o.y+=7);s.obs=s.obs.filter(o=>o.y<520);if(s.obs.some(o=>o.lane===s.lane&&o.y>350&&o.y<475)){s.dead=true;clearInterval(timer);$("raceCanvas").classList.add("crash-shake");$("miniGameBody").insertAdjacentHTML("beforeend",'<div class="game-over-panel"><h3>CRASH!</h3><p>Distance: '+s.score+'</p><button class="primary-button" id="raceAgain">Race again ↻</button></div>');$("raceAgain").onclick=()=>openGame("racer");return;}if(s.tick%5===0){s.score++;$("raceScore").textContent=s.score;}draw();},35);draw();
 }
+
+
+// Friend invitations launch Memory Match in a room created by the inviter.
+window.arcadeHubStartInvitedMemory=async(code,mark)=>{
+ try{
+  await ensureMemorySignIn();
+  openGame("memory");
+  const candidate=ref(miniDb,"rooms/"+code),snap=await get(candidate),data=snap.val();
+  if(!data||data.type!=="memory"||data.status!=="playing"||data.players?.[mark]?.id!==memoryUserId)throw Error("This Memory Match invitation is no longer valid.");
+  memoryRoomRef=candidate;memoryMark=mark;listenMemoryRoom();
+ }catch(e){console.error("[ArcadeHub] Invited Memory Match could not open:",e);$("miniGameBody").innerHTML='<div class="memory-room-panel"><h2>Could not join game</h2><p class="game-help">'+String(e.message||"Please try again.")+'</p><button class="secondary-button" id="memoryBackToMenu">Back</button></div>';$("memoryBackToMenu").onclick=memoryMenu;}
+};

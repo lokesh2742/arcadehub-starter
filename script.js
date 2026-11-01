@@ -817,3 +817,14 @@ document.querySelectorAll(".filter-chip").forEach(button => {
     filterGames();
   });
 });
+
+// Friend invitations can open a pre-created Tic Tac Toe room directly.
+window.arcadeHubStartInvitedTicTacToe=async(code,mark)=>{
+ try{
+  await requireGoogleSignIn();
+  const candidate=ref(db,"rooms/"+code),snap=await get(candidate),data=snap.val();
+  if(!data||data.type!=="tictactoe"||data.status!=="playing"||data.players?.[mark]?.id!==userId)throw Error("This game invitation is no longer valid.");
+  openGame();gameMode="online";roomRef=candidate;roomCode=code;myMark=mark;currentRoom=data;board=Array.isArray(data.board)?data.board:Array(9).fill("");scores=data.scores||{X:0,O:0};gameOver=false;
+  $("onlineResultModal").hidden=true;$("activeRoomBanner").hidden=true;listenToRoom();
+ }catch(e){showToast(e.message||"Could not open the invited game.");}
+};
